@@ -32,6 +32,7 @@ Uma fonte por pergunta. Status: **atual** ou **obsoleto** (não apague obsoleto 
 | O que foi simplificado e validado para a entrega? | [specs/renova-project-template/simplification-validation.md](specs/renova-project-template/simplification-validation.md) | validação local; CI/clone têm evidências próprias |
 | Por que esta biblioteca de autenticação e quais controles foram provados? | [specs/renova-project-template/auth-spike.md](specs/renova-project-template/auth-spike.md) | experimento e módulo local |
 | O que foi validado nos perfis e no acesso por convite? | [specs/renova-project-template/auth-validation.md](specs/renova-project-template/auth-validation.md) | validação por camada |
+| Como o painel Miniso é organizado no template? | [specs/miniso-analytics/architecture.md](specs/miniso-analytics/architecture.md) | atual, migração inicial |
 | Quais aprendizados surgiram neste incremento? | [plans/onboarding-lessons.md](plans/onboarding-lessons.md), [registro](plans/onboarding-lessons.json) | candidatos observados, sem nova dependência do clone |
 | Templates de spec? | [specs/_templates/requirements.md](specs/_templates/requirements.md), [design.md](specs/_templates/design.md), [tasks.md](specs/_templates/tasks.md), [handoff.md](specs/_templates/handoff.md) | atual |
 | Exemplo histórico de ADR? | [decisions/0001-centavos-inteiros.md](decisions/0001-centavos-inteiros.md) | histórico, exemplo financeiro retirado |
