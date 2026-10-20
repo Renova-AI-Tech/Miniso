@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": ["Bash(pnpm *)", "Bash(git *)", "Bash(bash scripts/*)"]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/hooks/format-edited.mjs"
+          }
+        ]
+      }
+    ]
+  }
+}

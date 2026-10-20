@@ -1,0 +1,13 @@
+# Opcional: descomente as regras e substitua @responsavel por um usuário/time real.
+# Sem regras ativas, CODEOWNERS não exige um responsável específico.
+# Os gates de CI e a revisão continuam descritos no manual do projeto.
+
+# /AGENTS.md @responsavel
+# /CLAUDE.md @responsavel
+# /ARCHITECTURE.md @responsavel
+# /harness.rules.mjs @responsavel
+# /scripts/ @responsavel
+# /docs/process/ @responsavel
+# /.agents/skills/ @responsavel
+# /.mcp.json @responsavel
+# /.github/workflows/ @responsavel

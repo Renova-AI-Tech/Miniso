@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "promote_threshold": 2,
+  "window_days": 45,
+  "quarantine_threshold": 2,
+  "next_id": 3,
+  "lessons": [
+    {
+      "id": "L-001",
+      "key": "ac_gap::verifique diagnosticos http contra as rotas reais da api e do proxy alem dos probes simulados",
+      "text": "Verifique diagnósticos HTTP contra as rotas reais da API e do proxy, além dos probes simulados.",
+      "signal": "ac_gap",
+      "scope": "scripts/project/doctor",
+      "status": "candidate",
+      "features": ["renova-onboarding"],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": ["tests/integration/doctor.test.ts:104 (scripts/project/doctor)"],
+      "created": "2026-10-19T22:23:11Z",
+      "last_seen": "2026-10-19T22:23:11Z"
+    },
+    {
+      "id": "L-002",
+      "key": "ac_gap::canonicalize o caminho do entrypoint e execute a cli em subprocesso por um alias de diretorio",
+      "text": "Canonicalize o caminho do entrypoint e execute a CLI em subprocesso por um alias de diretório.",
+      "signal": "ac_gap",
+      "scope": "scripts/project/cli",
+      "status": "candidate",
+      "features": ["renova-onboarding"],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "tests/integration/setup.test.ts:50; tests/integration/doctor.test.ts:147 (scripts/project/cli)"
+      ],
+      "created": "2026-10-19T22:23:11Z",
+      "last_seen": "2026-10-19T22:23:11Z"
+    }
+  ]
+}

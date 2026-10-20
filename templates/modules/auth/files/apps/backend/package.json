@@ -1,0 +1,35 @@
+{
+  "name": "@renova/backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./contract": {
+      "types": "./src/contract.ts",
+      "default": "./dist/contract.js"
+    }
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fastify/rate-limit": "11.2.1",
+    "@renova/db-types": "workspace:*",
+    "@renova/dbmigrator": "workspace:*",
+    "@trpc/server": "11.19.0",
+    "fastify": "5.12.5",
+    "kysely": "0.29.6",
+    "pg": "8.23.1",
+    "zod": "4.6.5",
+    "@renova/auth": "workspace:*",
+    "better-auth": "1.7.11",
+    "@fastify/static": "10.1.6"
+  },
+  "devDependencies": {
+    "@types/pg": "8.23.1",
+    "tsx": "4.23.15"
+  }
+}

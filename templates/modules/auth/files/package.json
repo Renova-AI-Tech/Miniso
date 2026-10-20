@@ -1,0 +1,60 @@
+{
+  "name": "renova-template",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.33.4",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "setup": "node scripts/project/setup.mjs",
+    "doctor": "node scripts/project/doctor.mjs",
+    "dev": "node scripts/project/dev.mjs",
+    "db:up": "node scripts/db/cli.mjs up --target local",
+    "db:migrate": "node scripts/db/cli.mjs migrate --target local",
+    "build": "pnpm -r --if-present build",
+    "init": "bash scripts/init.sh",
+    "harness:check": "node scripts/harness/check.mjs",
+    "harness:test": "vitest run --config vitest.harness.config.ts",
+    "test:loop": "vitest run --config vitest.loop.config.ts && pnpm --filter @renova/ui test",
+    "test:unit": "vitest run --config vitest.loop.config.ts tests/unit",
+    "test:property": "vitest run --config vitest.loop.config.ts tests/property",
+    "test:integration": "node scripts/db/test-runner.mjs integration",
+    "test:e2e": "node scripts/db/test-runner.mjs e2e",
+    "check:quick": "bash scripts/check-quick",
+    "check:full": "bash scripts/check-full",
+    "ci:quick": "bash scripts/check-quick",
+    "ci:local": "pnpm check:quick && pnpm test:integration",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "lint": "biome check .",
+    "format": "biome check --write .",
+    "prepare": "husky",
+    "test:profiles": "node scripts/project/test-profiles.mjs",
+    "auth:invite": "tsx scripts/auth/invite.mjs",
+    "test:containers": "node --test tests/containers/runtime.test.mjs",
+    "deploy:setup": "node scripts/deploy/setup.mjs",
+    "deploy:prepare": "node scripts/deploy/release.mjs prepare",
+    "deploy:apply": "node scripts/deploy/release.mjs apply",
+    "deploy:verify": "node scripts/deploy/verify.mjs"
+  },
+  "devDependencies": {
+    "yaml": "2.9.1",
+    "pg": "8.23.1",
+    "@types/pg": "8.23.1",
+    "tsx": "4.23.15",
+    "@types/node": "^22.18.6",
+    "@biomejs/biome": "^2.2.4",
+    "@playwright/test": "^1.55.0",
+    "fast-check": "^4.3.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.1.6",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4",
+    "railway": "3.16.0"
+  },
+  "lint-staged": {
+    "*.{js,mjs,ts,tsx,css,json}": [
+      "biome check --write --no-errors-on-unmatched"
+    ]
+  }
+}

@@ -1,0 +1,166 @@
+@import "tailwindcss";
+@import "@fontsource-variable/manrope";
+@import "@fontsource-variable/playfair-display";
+@import "@fontsource/material-symbols-outlined/400.css";
+
+@custom-variant dark (&:is(.dark *));
+@config "../tailwind.config.ts";
+@source "./components";
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+  }
+
+  @keyframes loadingBarAnimation {
+    0% {
+      transform: translateX(-100%);
+    }
+    50% {
+      transform: translateX(100%);
+    }
+    100% {
+      transform: translateX(-100%);
+    }
+  }
+
+  .loading-bar {
+    animation: loadingBarAnimation 2s infinite;
+  }
+
+  .dialog-overlay {
+    @apply data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/80 backdrop-blur-sm;
+  }
+
+  .dialog-content {
+    @apply data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border p-6 shadow-lg duration-200 sm:rounded-lg md:w-full;
+    border-color: var(--border);
+    background-color: var(--card);
+    color: var(--card-foreground);
+  }
+
+  .material-symbols-outlined {
+    font-family: "Material Symbols Outlined", sans-serif;
+    font-weight: 400;
+    font-style: normal;
+    font-size: 1.5rem;
+    line-height: 1;
+    display: inline-block;
+    font-variation-settings:
+      "FILL" 0,
+      "wght" 400,
+      "GRAD" 0,
+      "opsz" 24;
+  }
+
+  .material-symbols-outlined.ms-fill {
+    font-variation-settings:
+      "FILL" 1,
+      "wght" 400,
+      "GRAD" 0,
+      "opsz" 24;
+  }
+
+  .sidebar-nav-active {
+    border-left: 3px solid var(--sidebar-highlight);
+    background: rgba(122, 246, 235, 0.05);
+  }
+
+  .renova-grid {
+    background-image:
+      linear-gradient(to right, rgba(79, 209, 197, 0.07) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(79, 209, 197, 0.07) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+
+  .mobile-background {
+    background: linear-gradient(
+      to bottom,
+      var(--primary) 0%,
+      var(--primary) 50%,
+      var(--card) 50%,
+      var(--card) 100%
+    );
+  }
+
+  input::-webkit-outer-spin-button,
+  input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+
+  :root {
+    --font-sans: "Manrope Variable", system-ui, sans-serif;
+    --font-display: "Playfair Display Variable", ui-serif, Georgia, serif;
+
+    --primary: #1e3a3a;
+    --primary-hover: #2d4f4d;
+    --primary-foreground: #ffffff;
+
+    --accent: #4fd1c5;
+    --accent-foreground: #1e3a3a;
+
+    --secondary: #8ea8a8;
+
+    --background: #f5f7f7;
+    --foreground: #1f2937;
+
+    --card: #ffffff;
+    --card-foreground: #1f2937;
+
+    --muted: #e8ecec;
+    --muted-foreground: #64748b;
+
+    --border: #e2e8f0;
+    --input: #e2e8f0;
+    --ring: #4fd1c5;
+
+    --destructive: #dc2626;
+    --destructive-foreground: #ffffff;
+
+    --sidebar-highlight: #7af6eb;
+    --on-primary-container: #86a4a3;
+    --outline-variant: #c1c8c7;
+
+    --sidebar: var(--primary);
+    --sidebar-foreground: var(--primary-foreground);
+    --sidebar-primary: var(--accent);
+    --sidebar-primary-foreground: var(--accent-foreground);
+    --sidebar-accent: rgba(122, 246, 235, 0.08);
+    --sidebar-accent-foreground: var(--primary-foreground);
+    --sidebar-border: rgba(193, 200, 199, 0.15);
+    --sidebar-ring: var(--ring);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
+    transition-duration: 0.01ms;
+    scroll-behavior: auto;
+  }
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+@theme inline {
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}

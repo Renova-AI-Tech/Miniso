@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Lint + types + harness + unit/property. Alvo: < 2 min. Sem DB, sem E2E.
+# CI e pre-push chamam este arquivo — não um segundo conjunto de comandos.
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
+
+echo "== harness:check"
+pnpm harness:check
+
+echo "== lint"
+pnpm lint
+
+echo "== typecheck"
+pnpm typecheck
+
+echo "== harness:test"
+pnpm harness:test
+
+echo "== test:loop (unit + property)"
+pnpm test:loop
+
+echo "check-quick ok"

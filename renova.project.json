@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "project": { "slug": "renova-local", "displayName": "Meu projeto Renova" },
+  "profile": "public",
+  "capabilities": [],
+  "initialTarget": "local",
+  "origin": {
+    "templateVersion": "0.1.0-dev",
+    "sourceRevision": "d0c2db9",
+    "uiVersion": "0.1.0-dev"
+  }
+}

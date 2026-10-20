@@ -1,0 +1,236 @@
+.auth-shell {
+  min-height: 100vh;
+  background: var(--background);
+  padding-bottom: 32px;
+}
+.auth-brand {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 28px max(24px, calc((100vw - 1080px) / 2));
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+.auth-brand img {
+  width: 178px;
+  height: auto;
+}
+.auth-brand span {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+.auth-card {
+  width: min(100% - 40px, 480px);
+  margin: 56px auto 24px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 36px;
+}
+.auth-card h1 {
+  font-size: 36px;
+  margin: 14px 0 18px;
+}
+.auth-description,
+.auth-result p {
+  color: var(--muted-foreground);
+  font-size: 14px;
+  line-height: 1.85;
+}
+.auth-form {
+  display: grid;
+  gap: 22px;
+  margin-top: 28px;
+}
+.auth-form label,
+.private-form label {
+  color: var(--foreground);
+  font-size: 13px;
+  font-weight: 700;
+}
+.auth-form input,
+.private-form input {
+  border-radius: 6px;
+}
+.auth-form > button {
+  width: 100%;
+  min-height: 46px;
+  border-radius: 6px;
+}
+.auth-error {
+  color: var(--foreground);
+  background: var(--muted);
+  border-left: 3px solid var(--primary);
+  padding: 14px;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.auth-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 22px;
+}
+.auth-links a,
+.auth-footer a,
+.account-actions a {
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.auth-links a:focus-visible,
+.auth-footer a:focus-visible,
+.account-actions a:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 4px;
+}
+.auth-note {
+  padding-top: 24px;
+  margin-top: 28px;
+  border-top: 1px solid var(--border);
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 1.8;
+}
+.auth-result {
+  display: grid;
+  gap: 18px;
+}
+.auth-result h2 {
+  font-size: 20px;
+}
+.auth-result a,
+.auth-result button {
+  justify-self: start;
+}
+.auth-footer {
+  text-align: center;
+}
+.auth-pending {
+  display: grid;
+  gap: 24px;
+  max-width: 600px;
+  margin: auto;
+  padding: 80px 24px;
+}
+.auth-pending button {
+  justify-self: start;
+}
+.account-bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
+  padding: 14px max(24px, calc((100vw - 1056px) / 2));
+}
+.account-bar > div:first-child {
+  display: grid;
+  gap: 3px;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.account-bar span {
+  color: var(--muted-foreground);
+  font-size: 11px;
+}
+.account-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+.account-error {
+  width: 100%;
+  font-size: 13px;
+}
+.private-page {
+  max-width: 880px;
+  padding: 48px 24px;
+  margin: auto;
+}
+.private-page h1 {
+  margin: 16px 0;
+}
+.private-form {
+  display: grid;
+  gap: 20px;
+  padding: 24px;
+  margin: 32px 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+}
+.private-form > p {
+  font-size: 13px;
+}
+.private-records {
+  display: grid;
+  gap: 20px;
+}
+.private-records h2 {
+  font: 500 28px var(--font-display);
+}
+.private-records > p {
+  color: var(--muted-foreground);
+  font-size: 14px;
+  line-height: 1.8;
+}
+.private-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 12px;
+}
+.private-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 20px;
+  background: var(--card);
+}
+.private-list h3 {
+  font-size: 14px;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.private-list button {
+  flex-shrink: 0;
+}
+@media (max-width: 600px) {
+  .auth-brand {
+    padding: 22px 20px;
+  }
+  .auth-brand img {
+    width: 148px;
+  }
+  .auth-card {
+    margin-top: 28px;
+    padding: 28px 24px;
+  }
+  .auth-card h1 {
+    font-size: 32px;
+  }
+  .account-bar {
+    padding: 16px 20px;
+  }
+  .private-page {
+    padding: 32px 20px;
+  }
+  .private-form {
+    padding: 20px;
+  }
+  .private-list li {
+    padding: 16px;
+  }
+}

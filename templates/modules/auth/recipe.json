@@ -1,0 +1,181 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "path": ".env.example",
+      "beforeSha256": "e3d1b22e75efdcd22866a2c3a9d970bfa9fe6d19d8f081f1f7a85ae560c31d5c"
+    },
+    {
+      "path": "apps/backend/package.json",
+      "beforeSha256": "3c77d0d60a4834d468af31b9727cf58066ff1b13ac48e3b41d0af0779faec0c7"
+    },
+    {
+      "path": "apps/backend/src/database.ts",
+      "beforeSha256": "dd9bd3a7b16af0e60e7f671dab941e10754959edc8d27c4fd9b6276d49910b0e"
+    },
+    {
+      "path": "apps/backend/src/env.ts",
+      "beforeSha256": "ed4a2d5c35efa05f18a8add7fde056695eb43ad9b665531a4094453d094b19c1"
+    },
+    {
+      "path": "apps/backend/src/modules/records/records.repository.ts",
+      "beforeSha256": null
+    },
+    {
+      "path": "apps/backend/src/modules/records/records.router.ts",
+      "beforeSha256": null
+    },
+    {
+      "path": "apps/backend/src/server/app-router.ts",
+      "beforeSha256": "8f03e79d7e0cb9120e784b2e3dca8a51ec96632a11024c1a13bc1404dba60d12"
+    },
+    {
+      "path": "apps/backend/src/server/app.ts",
+      "beforeSha256": "3000d1e7dd674081dac3da1a7651bb782ac4777e333b1744cf51c3e5e7f6e230"
+    },
+    {
+      "path": "apps/backend/src/server/register.ts",
+      "beforeSha256": "9a9c5cc020a473ba5a162e476ec8bd47013bb040d0afc15a44ed736ab1f0f020"
+    },
+    {
+      "path": "apps/backend/src/server/security.ts",
+      "beforeSha256": "9f5d2b3109efb1ab1141166dc5dc853c1a906de1084217c7b087fedd43a722bf"
+    },
+    {
+      "path": "apps/backend/src/server/trpc.ts",
+      "beforeSha256": "92a8f3b133a26d3769467c168c6e8a7fe12bcc5eae396e7668ac4996bdff748c"
+    },
+    {
+      "path": "apps/frontend/src/App.tsx",
+      "beforeSha256": "bc73dabd0605d7387e837dbb6f861ee0debd3fb2ac77872da293657e5aa54baa"
+    },
+    {
+      "path": "apps/frontend/src/api.ts",
+      "beforeSha256": "05dc64040301b5f7e588ccb0c41a8f063f881cb5a261d930d78e3ce04fd600da"
+    },
+    {
+      "path": "apps/frontend/src/auth/AuthGate.tsx",
+      "beforeSha256": null
+    },
+    {
+      "path": "apps/frontend/src/auth/auth.css",
+      "beforeSha256": null
+    },
+    {
+      "path": "apps/frontend/src/auth/client.ts",
+      "beforeSha256": null
+    },
+    {
+      "path": "apps/frontend/src/pages/AuthPage.tsx",
+      "beforeSha256": null
+    },
+    {
+      "path": "apps/frontend/src/pages/PrivatePage.tsx",
+      "beforeSha256": null
+    },
+    {
+      "path": "docker-compose.yml",
+      "beforeSha256": "5f79d49d275223f5dfa0152432cff234a2f54b8d770d77af67c9cba543449e50"
+    },
+    {
+      "path": "package.json",
+      "beforeSha256": "372177083b4ab358ccae546bdb17c6843dadfc72a03646437697293dc3673d79"
+    },
+    {
+      "path": "packages/auth/package.json",
+      "beforeSha256": null
+    },
+    {
+      "path": "packages/auth/src/index.ts",
+      "beforeSha256": null
+    },
+    {
+      "path": "packages/auth/tsconfig.build.json",
+      "beforeSha256": null
+    },
+    {
+      "path": "packages/auth/tsconfig.json",
+      "beforeSha256": null
+    },
+    {
+      "path": "packages/db-types/src/index.ts",
+      "beforeSha256": "fda5837f93d922a800a1c27f9c587471df241b5e81dcfa4bd0570d326d41806c"
+    },
+    {
+      "path": "packages/dbmigrator/src/migrations.ts",
+      "beforeSha256": "d75ddd693fed6404ccfb66c8d7c9575bb986d2ff1644647256348bd7b073b31b"
+    },
+    {
+      "path": "pnpm-lock.yaml",
+      "beforeSha256": "3e5168c2211aa5bce74a350434e01080c45534b3533433491bab549c52bf7fbe"
+    },
+    {
+      "path": "scripts/auth/invite.mjs",
+      "beforeSha256": null
+    },
+    {
+      "path": "tests/e2e/auth-helpers.ts",
+      "beforeSha256": null
+    },
+    {
+      "path": "tests/e2e/auth-pagination.spec.ts",
+      "beforeSha256": null
+    },
+    {
+      "path": "tests/e2e/auth.spec.ts",
+      "beforeSha256": null
+    },
+    {
+      "path": "tests/e2e/reference-routing.spec.ts",
+      "beforeSha256": "6bee0cf57d472f68f2448f9185190ac9877168b7d75c6d8753355edc0d77f3f7"
+    },
+    {
+      "path": "tests/integration/auth.test.ts",
+      "beforeSha256": null
+    },
+    {
+      "path": "tests/integration/backend-bootstrap.test.ts",
+      "beforeSha256": "b0b884e9b83afc86178ac3df7423230dc14d914d371dcd45a5423d3ccbe8274b"
+    },
+    {
+      "path": "tests/integration/owned-records.test.ts",
+      "beforeSha256": null
+    },
+    {
+      "path": "tests/integration/public-profile.test.ts",
+      "beforeSha256": "1a1b5bdddec2f81971f795cf4b29f889479ba8ff73b6724c297b94b5412f31e9"
+    },
+    {
+      "path": "tests/integration/security.test.ts",
+      "beforeSha256": "e5066a9776687104f2563724179c2ea5f0148d79d2289549c245e40ec8f5d7a3"
+    },
+    {
+      "path": "tests/integration/transport.test.ts",
+      "beforeSha256": "fe615c01548b56005d105f176c541beca0a4fa87af8553a482a1af5d72710460"
+    },
+    {
+      "path": "tests/support/transport-app.ts",
+      "beforeSha256": null
+    },
+    {
+      "path": "tests/e2e/env.ts",
+      "beforeSha256": null
+    },
+    {
+      "path": "packages/auth/src/mail.ts",
+      "beforeSha256": null
+    },
+    {
+      "path": "scripts/auth/invite-remote.mjs",
+      "beforeSha256": null
+    },
+    {
+      "path": "tests/unit/auth-mail.test.ts",
+      "beforeSha256": null
+    },
+    {
+      "path": "tests/unit/auth-remote-invite.test.ts",
+      "beforeSha256": null
+    }
+  ]
+}

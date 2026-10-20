@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Todos os gates da base local. Não há modo parcial neste comando.
+# pnpm ci:local é uma validação parcial explicitamente sem navegador.
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
+
+bash scripts/check-quick
+
+echo "== build"
+pnpm build
+
+echo "== integration"
+pnpm test:integration
+
+echo "== e2e"
+pnpm test:e2e
+echo "check-full ok"
