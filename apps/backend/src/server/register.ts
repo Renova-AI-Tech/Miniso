@@ -3,12 +3,12 @@ import type { AnyRouter } from '@trpc/server';
 import type { FastifyInstance } from 'fastify';
 import { appRouter } from './app-router.js';
 import { assertRouterPolicies } from './trpc.js';
-import type { ExampleRepository } from '../modules/example/example.repository.js';
+import type { LinxRepository } from '../modules/linx/linx.repository.js';
 
 export async function registerTrpc(
   app: FastifyInstance,
   selectedRouter: AnyRouter = appRouter,
-  examples?: ExampleRepository,
+  linx?: LinxRepository,
 ) {
   assertRouterPolicies(selectedRouter);
   await app.register(async (transport) => {
@@ -32,7 +32,7 @@ export async function registerTrpc(
           router: selectedRouter,
           allowBatching: false,
           allowMethodOverride: false,
-          createContext: () => ({ requestId: request.id, examples }),
+          createContext: () => ({ requestId: request.id, linx }),
           onError: ({ error }) => {
             request.log.warn({
               event: 'procedure_failed',

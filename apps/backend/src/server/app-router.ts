@@ -1,9 +1,9 @@
 import { publicProcedure, router } from './trpc.js';
-import { exampleRouter } from '../modules/example/example.router.js';
+import { linxRouter } from '../modules/linx/linx.router.js';
 
 export const appRouter = router({
   system: router({ health: publicProcedure.query(() => ({ status: 'ok' as const })) }),
-  public: exampleRouter,
+  linx: linxRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "project": { "slug": "renova-local", "displayName": "Meu projeto Renova" },
+  "project": { "slug": "miniso-analytics", "displayName": "Miniso Analytics" },
   "profile": "public",
   "capabilities": [],
   "initialTarget": "local",

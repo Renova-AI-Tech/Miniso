@@ -7,7 +7,7 @@ import { clientIp } from './client-ip.js';
 import { registerFrontend } from './frontend.js';
 import { registerTrpc } from './register.js';
 import { registerSecurity, type SecurityOptions } from './security.js';
-import type { ExampleRepository } from '../modules/example/example.repository.js';
+import type { LinxRepository } from '../modules/linx/linx.repository.js';
 
 export interface AppOptions {
   frontendRoot?: string;
@@ -15,7 +15,7 @@ export interface AppOptions {
   logStream?: { write(message: string): void };
   verifyCsrf?: SecurityOptions['verifyCsrf'];
   router?: AnyRouter;
-  examples?: ExampleRepository;
+  linx?: LinxRepository;
 }
 
 export async function createApp(env: BackendEnv, options: AppOptions = {}) {
@@ -98,7 +98,7 @@ export async function createApp(env: BackendEnv, options: AppOptions = {}) {
   });
 
   try {
-    await registerTrpc(app, options.router, options.examples);
+    await registerTrpc(app, options.router, options.linx);
     if (env.NODE_ENV === 'production') await registerFrontend(app, options.frontendRoot);
   } catch (error) {
     await app.close();

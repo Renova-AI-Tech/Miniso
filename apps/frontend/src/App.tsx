@@ -1,23 +1,19 @@
 import { lazy, Suspense } from 'react';
-import { HomePage } from './pages/HomePage';
+import DashboardPage from './pages/DashboardPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
 const ReferencePage = lazy(() => import('./pages/ReferencePage'));
 
-function readPathname() {
-  try {
-    return decodeURIComponent(window.location.pathname).normalize('NFC').replace(/\/$/, '') || '/';
-  } catch {
-    return null;
-  }
+function pathname() {
+  return decodeURIComponent(window.location.pathname).normalize('NFC').replace(/\/$/, '') || '/';
 }
 
 export function App() {
-  const pathname = readPathname();
-  if (pathname === '/') return <HomePage />;
-  if (pathname === '/referência' || pathname === '/referencia') {
+  const currentPath = pathname();
+  if (currentPath === '/') return <DashboardPage />;
+  if (currentPath === '/referência' || currentPath === '/referencia') {
     return (
-      <Suspense fallback={<main aria-label="Carregando referência" aria-busy="true" />}>
+      <Suspense fallback={<main aria-busy="true">Carregando referência…</main>}>
         <ReferencePage />
       </Suspense>
     );

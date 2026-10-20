@@ -1,11 +1,11 @@
 import { initTRPC } from '@trpc/server';
 import type { AnyProcedure, AnyRouter } from '@trpc/server';
 import type { AccessPolicy } from './security.js';
-import type { ExampleRepository } from '../modules/example/example.repository.js';
+import type { LinxRepository } from '../modules/linx/linx.repository.js';
 
 export interface TrpcContext {
   requestId: string;
-  examples?: ExampleRepository | undefined;
+  linx?: LinxRepository | undefined;
 }
 
 const t = initTRPC
