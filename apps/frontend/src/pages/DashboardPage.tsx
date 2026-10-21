@@ -1,8 +1,8 @@
-/* biome-ignore-all lint/a11y/useButtonType: dashboard controls are not form submissions. */
 /* biome-ignore-all lint/suspicious/noArrayIndexKey: paginated analytical rows are keyed by their source grain. */
 /* biome-ignore-all lint/style/useTemplate: legacy dashboard formatting is kept stable during template migration. */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Badge, Button, Card, Checkbox, Input, Label } from '@renova/ui';
 import {
   getAnalytics,
   getDailySales,
@@ -176,34 +176,36 @@ function SalesScreen({
   return (
     <>
       <section className="kpi-grid compact-kpis">
-        <article className="kpi-card">
+        <Card className="kpi-card">
           <div className="kpi-label">Linhas detalhadas</div>
           <strong>{number.format(sales.length)}</strong>
           <small>movimentos agrupados por produto</small>
-        </article>
-        <article className="kpi-card">
+        </Card>
+        <Card className="kpi-card">
           <div className="kpi-label">Quantidade líquida</div>
           <strong>{number.format(totalQuantity)}</strong>
           <small>vendas menos devoluções</small>
-        </article>
-        <article className="kpi-card">
+        </Card>
+        <Card className="kpi-card">
           <div className="kpi-label">Faturamento líquido</div>
           <strong>{money.format(totalRevenue)}</strong>
           <small>no período e loja selecionados</small>
-        </article>
-        <article className="kpi-card">
+        </Card>
+        <Card className="kpi-card">
           <div className="kpi-label">Custo das vendas</div>
           <strong>{money.format(totalCost)}</strong>
           <small>custo movimentado</small>
-        </article>
+        </Card>
       </section>
-      <article className="card table-card detail-screen-card">
+      <Card className="card table-card detail-screen-card">
         <div className="card-header">
           <div>
             <p className="eyebrow">VENDAS DETALHADAS</p>
             <h2>Dia · loja · produto · classificação</h2>
           </div>
-          <span className="period-pill">{number.format(total)} linhas</span>
+          <Badge variant="outline" className="period-pill">
+            {number.format(total)} linhas
+          </Badge>
         </div>
         <div className="table-scroll tall-table">
           <table>
@@ -248,17 +250,27 @@ function SalesScreen({
           {!sales.length && <div className="empty-state">Nenhuma venda encontrada no período.</div>}
         </div>
         <div className="pagination">
-          <button onClick={() => setPage(Math.max(page - 1, 1))} disabled={page === 1}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage(Math.max(page - 1, 1))}
+            disabled={page === 1}
+          >
             ← Anterior
-          </button>
+          </Button>
           <span>
             Página {page} · {number.format(total)} linhas
           </span>
-          <button onClick={() => setPage(page + 1)} disabled={!hasNext || sales.length < pageSize}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage(page + 1)}
+            disabled={!hasNext || sales.length < pageSize}
+          >
             Próxima →
-          </button>
+          </Button>
         </div>
-      </article>
+      </Card>
     </>
   );
 }
@@ -301,34 +313,34 @@ function InventoryScreen({
   return (
     <>
       <section className="kpi-grid compact-kpis">
-        <article className="kpi-card">
+        <Card className="kpi-card">
           <div className="kpi-label">Itens no snapshot</div>
           <strong>{number.format(filtered.length)}</strong>
           <small>produto · loja</small>
-        </article>
-        <article className="kpi-card">
+        </Card>
+        <Card className="kpi-card">
           <div className="kpi-label">Saldo</div>
           <strong>{number.format(totalQuantity)}</strong>
           <small>unidades</small>
-        </article>
-        <article className="kpi-card">
+        </Card>
+        <Card className="kpi-card">
           <div className="kpi-label">Valor a custo</div>
           <strong>{money.format(totalCost)}</strong>
           <small>custo total</small>
-        </article>
-        <article className="kpi-card">
+        </Card>
+        <Card className="kpi-card">
           <div className="kpi-label">Valor a venda</div>
           <strong>{money.format(totalSale)}</strong>
           <small>saldo × preço de venda</small>
-        </article>
+        </Card>
       </section>
-      <article className="card table-card detail-screen-card">
+      <Card className="card table-card detail-screen-card">
         <div className="card-header">
           <div>
             <p className="eyebrow">ESTOQUE POR PRODUTO E LOJA</p>
             <h2>Saldo, custo, venda e fornecedor</h2>
           </div>
-          <input
+          <Input
             className="search"
             placeholder="Buscar produto ou loja nesta página"
             value={search}
@@ -385,20 +397,27 @@ function InventoryScreen({
           )}
         </div>
         <div className="pagination">
-          <button onClick={() => setPage(Math.max(page - 1, 1))} disabled={page === 1}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage(Math.max(page - 1, 1))}
+            disabled={page === 1}
+          >
             ← Anterior
-          </button>
+          </Button>
           <span>
             Página {page} · {number.format(total)} linhas
           </span>
-          <button
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => setPage(page + 1)}
             disabled={!hasNext || inventory.length < pageSize}
           >
             Próxima →
-          </button>
+          </Button>
         </div>
-      </article>
+      </Card>
     </>
   );
 }
@@ -423,7 +442,7 @@ function ProductsScreen({
   hasNext: boolean;
 }) {
   return (
-    <article className="card table-card detail-screen-card">
+    <Card className="card table-card detail-screen-card">
       <div className="card-header">
         <div>
           <p className="eyebrow">CADASTRO LINX</p>
@@ -432,7 +451,7 @@ function ProductsScreen({
             Quando “Todas as lojas” está selecionado, cada linha mantém o preço da própria unidade.
           </small>
         </div>
-        <input
+        <Input
           className="search"
           placeholder="Buscar produto, referência ou código"
           value={search}
@@ -503,17 +522,27 @@ function ProductsScreen({
         {!products.length && <div className="empty-state">Nenhum produto encontrado.</div>}
       </div>
       <div className="pagination">
-        <button onClick={() => setPage(Math.max(page - 1, 1))} disabled={page === 1}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setPage(Math.max(page - 1, 1))}
+          disabled={page === 1}
+        >
           ← Anterior
-        </button>
+        </Button>
         <span>
           Página {page} · {number.format(total)} linhas
         </span>
-        <button onClick={() => setPage(page + 1)} disabled={!hasNext || products.length < pageSize}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setPage(page + 1)}
+          disabled={!hasNext || products.length < pageSize}
+        >
           Próxima →
-        </button>
+        </Button>
       </div>
-    </article>
+    </Card>
   );
 }
 
@@ -544,38 +573,40 @@ function StatusScreen({
         </span>
       </div>
       <section className="kpi-grid compact-kpis">
-        <article className="kpi-card">
+        <Card className="kpi-card">
           <div className="kpi-label">Estado atual</div>
           <strong>{sync.running ? 'Em execução' : 'Concluído'}</strong>
           <small>{sync.running ? 'Uma coleta está em andamento' : 'Nenhuma coleta ativa'}</small>
-        </article>
-        <article className="kpi-card">
+        </Card>
+        <Card className="kpi-card">
           <div className="kpi-label">Último estoque</div>
           <strong>{health?.data_quality?.last_stock_date || '—'}</strong>
           <small>{age === null ? 'Sem dados' : `${age} dia(s) de idade`}</small>
-        </article>
-        <article className="kpi-card">
+        </Card>
+        <Card className="kpi-card">
           <div className="kpi-label">Última execução</div>
           <strong>
             {lastSuccess?.status === 'succeeded' ? 'Sucesso' : lastSuccess?.status || '—'}
           </strong>
           <small>{formatDateTime(lastSuccess?.finished_at)}</small>
-        </article>
-        <article className="kpi-card">
+        </Card>
+        <Card className="kpi-card">
           <div className="kpi-label">Movimentos no banco</div>
           <strong>{number.format(Number(health?.data_quality?.movement_rows || 0))}</strong>
           <small>{number.format(Number(health?.data_quality?.product_rows || 0))} produtos</small>
-        </article>
+        </Card>
       </section>
       <div className="status-grid">
-        <article className="card table-card">
+        <Card className="card table-card">
           <div className="card-header">
             <div>
               <p className="eyebrow">AUDITORIA DE EXECUÇÕES</p>
               <h2>Histórico de sincronizações</h2>
               <small>{history?.total || 0} execuções registradas</small>
             </div>
-            <span className="period-pill">{sync.running ? 'Em execução' : 'Ocioso'}</span>
+            <Badge variant={sync.running ? 'warning' : 'secondary'} className="period-pill">
+              {sync.running ? 'Em execução' : 'Ocioso'}
+            </Badge>
           </div>
           <div className="table-scroll">
             <table>
@@ -602,7 +633,12 @@ function StatusScreen({
                       {run.window_start || '—'} → {run.window_end || '—'}
                     </td>
                     <td>
-                      <span className={`run-status ${run.status}`}>{run.status}</span>
+                      <Badge
+                        variant={run.status === 'failed' ? 'warning' : 'secondary'}
+                        className={`run-status ${run.status}`}
+                      >
+                        {run.status}
+                      </Badge>
                       {run.error_message && <small>{run.error_message}</small>}
                     </td>
                     <td>{number.format(Number(run.records_received || 0))}</td>
@@ -620,15 +656,17 @@ function StatusScreen({
               <div className="empty-state">Nenhuma execução registrada.</div>
             )}
           </div>
-        </article>
-        <article className="card table-card">
+        </Card>
+        <Card className="card table-card">
           <div className="card-header">
             <div>
               <p className="eyebrow">HISTÓRICO DE ALTERAÇÕES</p>
               <h2>Registros modificados</h2>
               <small>Eventos gravados por execução da coleta.</small>
             </div>
-            <span className="period-pill">{audit?.total || 0} alterações</span>
+            <Badge variant="outline" className="period-pill">
+              {audit?.total || 0} alterações
+            </Badge>
           </div>
           <div className="table-scroll">
             <table>
@@ -646,9 +684,9 @@ function StatusScreen({
                   <tr key={change.id}>
                     <td>{formatDateTime(change.changed_at)}</td>
                     <td>
-                      <span className={`run-status ${change.change_type}`}>
+                      <Badge variant="outline" className={`run-status ${change.change_type}`}>
                         {change.change_type}
-                      </span>
+                      </Badge>
                     </td>
                     <td>{change.table_name}</td>
                     <td>{change.record_key}</td>
@@ -663,7 +701,7 @@ function StatusScreen({
               </div>
             )}
           </div>
-        </article>
+        </Card>
       </div>
       {lastRun?.status === 'failed' && (
         <div className="alert error">
@@ -699,7 +737,7 @@ function StoreDailyAnalysis({ rows }: { rows: AnalyticsPayload['store_daily'] })
     );
   }, [metric, rows]);
   return (
-    <article className="card table-card analysis-wide">
+    <Card className="card table-card analysis-wide">
       <div className="card-header">
         <div>
           <p className="eyebrow">GIRO E VELOCIDADE POR LOJA</p>
@@ -709,20 +747,24 @@ function StoreDailyAnalysis({ rows }: { rows: AnalyticsPayload['store_daily'] })
           </small>
         </div>
         <div className="chart-toggles">
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             type="button"
             className={metric === 'turnover' ? 'chart-toggle active' : 'chart-toggle'}
             onClick={() => setMetric('turnover')}
           >
             Ordenar por giro
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
             type="button"
             className={metric === 'sales_velocity' ? 'chart-toggle active' : 'chart-toggle'}
             onClick={() => setMetric('sales_velocity')}
           >
             Ordenar por velocidade
-          </button>
+          </Button>
         </div>
       </div>
       <div className="store-analysis-summary">
@@ -785,7 +827,7 @@ function StoreDailyAnalysis({ rows }: { rows: AnalyticsPayload['store_daily'] })
           <div className="empty-state">Sem dados diários de vendas e estoque para o período.</div>
         )}
       </div>
-    </article>
+    </Card>
   );
 }
 
@@ -1006,6 +1048,16 @@ function App() {
   const maxStore = Math.max(...topStores.map((row) => Number(row.net_revenue || 0)), 1);
   const storeName = (cnpj: string) =>
     stores.find((store) => store.company_cnpj === cnpj)?.trade_name || cnpj;
+  const analyticsView: AnalyticsPayload = analytics ?? {
+    start,
+    end,
+    suppliers: [],
+    categories: [],
+    origins: [],
+    velocity: [],
+    turnover: [],
+    store_daily: [],
+  };
   const stockSaleTotal = (dashboard?.stock_by_store || []).reduce(
     (total, row) => total + Number(row.stock_sale_value || 0),
     0,
@@ -1440,36 +1492,41 @@ function App() {
         </div>
         <div className="workspace-label">MINISO · OPERAÇÕES</div>
         <nav>
-          <button
+          <Button
+            variant="ghost"
             className={`nav-item ${activeView === 'overview' ? 'active' : ''}`}
             onClick={() => setActiveView('overview')}
           >
             <span>⌂</span> Visão geral
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="ghost"
             className={`nav-item ${activeView === 'sales' ? 'active' : ''}`}
             onClick={() => setActiveView('sales')}
           >
             <span>↗</span> Vendas
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="ghost"
             className={`nav-item ${activeView === 'inventory' ? 'active' : ''}`}
             onClick={() => setActiveView('inventory')}
           >
             <span>▦</span> Estoque
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="ghost"
             className={`nav-item ${activeView === 'products' ? 'active' : ''}`}
             onClick={() => setActiveView('products')}
           >
             <span>◈</span> Produtos
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="ghost"
             className={`nav-item ${activeView === 'status' ? 'active' : ''}`}
             onClick={() => setActiveView('status')}
           >
             <span>◷</span> Status e auditoria
-          </button>
+          </Button>
         </nav>
         <div className="sidebar-bottom">
           <span className="status-dot" /> API conectada
@@ -1492,22 +1549,28 @@ function App() {
                   ? 'Fonte mensal do Power BI'
                   : 'Dados do banco analítico'}
             </span>
-            <button
+            <Button
+              variant="outline"
               className="export-button"
               onClick={handleExport}
               disabled={exporting || loading}
             >
               <span>⇩</span>
               {exporting ? 'Gerando...' : 'Exportar Excel'}
-            </button>
-            <button className="refresh-button" onClick={handleSync} disabled={sync.running}>
+            </Button>
+            <Button
+              variant="accent"
+              className="refresh-button"
+              onClick={handleSync}
+              disabled={sync.running}
+            >
               <span>↻</span>
               {sync.running ? 'Atualizando' : 'Atualizar dados'}
-            </button>
+            </Button>
           </div>
         </header>
 
-        <section className="filters card">
+        <Card className="filters">
           <div className="filter-heading">
             <span className="filter-icon">◷</span>
             <div>
@@ -1516,7 +1579,9 @@ function App() {
               <div className="period-shortcuts">
                 <span>Atalhos</span>
                 {[7, 14, 30].map((days) => (
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     type="button"
                     key={days}
                     className={
@@ -1527,30 +1592,32 @@ function App() {
                     onClick={() => setQuickPeriod(days)}
                   >
                     {days} dias
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
           </div>
-          <label>
+          <Label className="filter-field">
             De
-            <input
+            <Input
               type="date"
               value={draftStart}
               onChange={(event) => setDraftStart(event.target.value)}
             />
-          </label>
-          <label>
+          </Label>
+          <Label className="filter-field">
             Até
-            <input
+            <Input
               type="date"
               value={draftEnd}
               onChange={(event) => setDraftEnd(event.target.value)}
             />
-          </label>
+          </Label>
           <div className="store-filter" ref={storeFilterRef}>
-            <span className="store-filter-label">Lojas</span>
-            <button
+            <Label className="store-filter-label">Lojas</Label>
+            <Button
+              variant="outline"
+              size="sm"
               type="button"
               className="store-picker"
               aria-expanded={storePickerOpen}
@@ -1562,7 +1629,7 @@ function App() {
                   : 'Todas as lojas'}
               </span>
               <span className="store-picker-arrow">▾</span>
-            </button>
+            </Button>
             {storePickerOpen && (
               <div className="store-dropdown">
                 <div className="store-checklist">
@@ -1570,13 +1637,12 @@ function App() {
                     const value = store.company_cnpj;
                     const checked = draftCompanies.includes(value);
                     return (
-                      <label className="store-option" key={value}>
-                        <input
-                          type="checkbox"
+                      <Label className="store-option" key={value}>
+                        <Checkbox
                           checked={checked}
-                          onChange={() => {
+                          onCheckedChange={(nextChecked) => {
                             setDraftCompanies(
-                              checked
+                              !nextChecked
                                 ? draftCompanies.filter((item) => item !== value)
                                 : [...draftCompanies, value],
                             );
@@ -1584,7 +1650,7 @@ function App() {
                           }}
                         />
                         <span>{store.trade_name || value}</span>
-                      </label>
+                      </Label>
                     );
                   })}
                 </div>
@@ -1593,14 +1659,25 @@ function App() {
             )}
           </div>
           {draftCompanies.length > 0 && (
-            <button className="clear-filter" onClick={() => setDraftCompanies([])}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="clear-filter"
+              onClick={() => setDraftCompanies([])}
+            >
               Todas as lojas
-            </button>
+            </Button>
           )}
-          <button className="apply-button" onClick={applyFilters} disabled={loading}>
+          <Button
+            variant="accent"
+            size="sm"
+            className="apply-button"
+            onClick={applyFilters}
+            disabled={loading}
+          >
             {loading ? 'Carregando...' : 'Aplicar filtros'}
-          </button>
-        </section>
+          </Button>
+        </Card>
 
         {error && <div className="alert error">{error}</div>}
         {message && <div className="alert success">{message}</div>}
@@ -1617,40 +1694,40 @@ function App() {
 
         {activeView === 'overview' && (
           <section className="kpi-grid">
-            <article className="kpi-card">
+            <Card className="kpi-card">
               <div className="kpi-label">
                 Faturamento líquido <span className="kpi-icon green">R$</span>
               </div>
               <strong>{money.format(Number(dashboard?.summary.net_revenue || 0))}</strong>
               <small>no período selecionado</small>
-            </article>
-            <article className="kpi-card">
+            </Card>
+            <Card className="kpi-card">
               <div className="kpi-label">
                 Quantidade de vendas <span className="kpi-icon blue">↗</span>
               </div>
               <strong>{number.format(Number(dashboard?.summary.net_quantity || 0))}</strong>
               <small>unidades líquidas</small>
-            </article>
-            <article className="kpi-card">
+            </Card>
+            <Card className="kpi-card">
               <div className="kpi-label">
                 Custo das vendas <span className="kpi-icon orange">R$</span>
               </div>
               <strong>{money.format(Number(dashboard?.summary.cost_value || 0))}</strong>
               <small>preço de custo movimentado</small>
-            </article>
-            <article className="kpi-card">
+            </Card>
+            <Card className="kpi-card">
               <div className="kpi-label">
                 Saldo em estoque <span className="kpi-icon purple">▦</span>
               </div>
               <strong>{number.format(stockQuantity)}</strong>
               <small>{money.format(stockSaleTotal)} a preço de venda</small>
-            </article>
+            </Card>
           </section>
         )}
 
         {activeView === 'overview' && (
           <section className="dashboard-grid">
-            <article className="card chart-card">
+            <Card className="card chart-card">
               <div className="card-header">
                 <div>
                   <p className="eyebrow">EVOLUÇÃO DIÁRIA</p>
@@ -1663,7 +1740,9 @@ function App() {
                   <div className="chart-toggles">
                     {(['net_revenue', 'net_quantity', 'cost_value'] as ChartMetric[]).map(
                       (metric) => (
-                        <button
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           type="button"
                           key={metric}
                           className={
@@ -1672,11 +1751,13 @@ function App() {
                           onClick={() => setChartMetric(metric)}
                         >
                           {chartMetricLabel[metric]}
-                        </button>
+                        </Button>
                       ),
                     )}
                   </div>
-                  <span className="period-pill">últimos 14 dias</span>
+                  <Badge variant="secondary" className="period-pill">
+                    últimos 14 dias
+                  </Badge>
                 </div>
               </div>
               <div className="bar-chart">
@@ -1684,7 +1765,9 @@ function App() {
                   dailySeries.map((day) => {
                     const value = Number(day[chartMetric] || 0);
                     return (
-                      <button
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         type="button"
                         className={
                           selectedDay === day.document_date ? 'bar-column selected' : 'bar-column'
@@ -1701,15 +1784,15 @@ function App() {
                         <span>
                           {day.document_date.slice(8, 10)}/{day.document_date.slice(5, 7)}
                         </span>
-                      </button>
+                      </Button>
                     );
                   })
                 ) : (
                   <div className="empty-state">Sem vendas para o período.</div>
                 )}
               </div>
-            </article>
-            <article className="card ranking-card">
+            </Card>
+            <Card className="card ranking-card">
               <div className="card-header">
                 <div>
                   <p className="eyebrow">DESEMPENHO</p>
@@ -1741,13 +1824,13 @@ function App() {
                   <div className="empty-state">Sem dados de lojas.</div>
                 )}
               </div>
-            </article>
+            </Card>
           </section>
         )}
 
         {activeView === 'overview' && (
           <section className="detail-grid">
-            <article className="card table-card">
+            <Card className="card table-card">
               <div className="card-header">
                 <div>
                   <p className="eyebrow">CATEGORIAS</p>
@@ -1781,9 +1864,12 @@ function App() {
                     ))}
                   </tbody>
                 </table>
+                {!topCategories.length && (
+                  <div className="empty-state">Sem dados de categorias no período.</div>
+                )}
               </div>
-            </article>
-            <article className="card table-card">
+            </Card>
+            <Card className="card table-card">
               <div className="card-header">
                 <div>
                   <p className="eyebrow">FORNECEDORES</p>
@@ -1812,9 +1898,12 @@ function App() {
                     ))}
                   </tbody>
                 </table>
+                {!topSuppliers.length && (
+                  <div className="empty-state">Sem dados de fornecedores no período.</div>
+                )}
               </div>
-            </article>
-            <article className="card table-card">
+            </Card>
+            <Card className="card table-card">
               <div className="card-header">
                 <div>
                   <p className="eyebrow">ORIGEM</p>
@@ -1842,14 +1931,17 @@ function App() {
                     ))}
                   </tbody>
                 </table>
+                {!topOrigins.length && (
+                  <div className="empty-state">Sem dados de origem no período.</div>
+                )}
               </div>
-            </article>
+            </Card>
           </section>
         )}
 
-        {activeView === 'overview' && analytics && (
+        {activeView === 'overview' && (
           <section className="analysis-grid">
-            <article className="card table-card">
+            <Card className="card table-card">
               <div className="card-header">
                 <div>
                   <p className="eyebrow">FORNECEDOR</p>
@@ -1868,7 +1960,7 @@ function App() {
                     </tr>
                   </thead>
                   <tbody>
-                    {analytics.suppliers.slice(0, 10).map((row, index) => (
+                    {analyticsView.suppliers.slice(0, 10).map((row, index) => (
                       <tr key={`${row.supplier_code}-${row.supplier_name || 'sem-nome'}-${index}`}>
                         <td>
                           <strong>{row.supplier_name || 'Sem fornecedor'}</strong>
@@ -1881,9 +1973,12 @@ function App() {
                     ))}
                   </tbody>
                 </table>
+                {!analyticsView.suppliers.length && (
+                  <div className="empty-state">Sem dados de faturamento por fornecedor.</div>
+                )}
               </div>
-            </article>
-            <article className="card table-card">
+            </Card>
+            <Card className="card table-card">
               <div className="card-header">
                 <div>
                   <p className="eyebrow">ORIGEM COMERCIAL</p>
@@ -1892,7 +1987,7 @@ function App() {
                 </div>
               </div>
               <div className="origin-bars">
-                {analytics.origins.map((row) => (
+                {analyticsView.origins.map((row) => (
                   <div className="origin-row" key={row.origin_name}>
                     <div className="origin-label">
                       <strong>{row.origin_name}</strong>
@@ -1901,7 +1996,7 @@ function App() {
                     <div className="origin-track">
                       <span
                         style={{
-                          width: `${Math.min((Number(row.net_revenue || 0) / Math.max(...analytics.origins.map((item) => Number(item.net_revenue || 0)), 1)) * 100, 100)}%`,
+                          width: `${Math.min((Number(row.net_revenue || 0) / Math.max(...analyticsView.origins.map((item) => Number(item.net_revenue || 0)), 1)) * 100, 100)}%`,
                         }}
                       />
                     </div>
@@ -1910,9 +2005,12 @@ function App() {
                     </small>
                   </div>
                 ))}
+                {!analyticsView.origins.length && (
+                  <div className="empty-state">Sem dados de origem comercial.</div>
+                )}
               </div>
-            </article>
-            <article className="card table-card analysis-wide">
+            </Card>
+            <Card className="card table-card analysis-wide">
               <div className="card-header">
                 <div>
                   <p className="eyebrow">CATEGORIA · CLASSE · SUBCLASSE</p>
@@ -1930,7 +2028,7 @@ function App() {
                     </tr>
                   </thead>
                   <tbody>
-                    {analytics.categories
+                    {analyticsView.categories
                       .filter((row) => row.category_name)
                       .slice(0, 15)
                       .map((row, index) => (
@@ -1951,9 +2049,12 @@ function App() {
                       ))}
                   </tbody>
                 </table>
+                {!analyticsView.categories.some((row) => row.category_name) && (
+                  <div className="empty-state">Sem dados de categoria e classificação.</div>
+                )}
               </div>
-            </article>
-            <article className="card table-card analysis-wide">
+            </Card>
+            <Card className="card table-card analysis-wide">
               <div className="card-header">
                 <div>
                   <p className="eyebrow">VELOCIDADE DE VENDA</p>
@@ -1976,7 +2077,7 @@ function App() {
                     </tr>
                   </thead>
                   <tbody>
-                    {analytics.velocity.slice(0, 15).map((row) => (
+                    {analyticsView.velocity.slice(0, 15).map((row) => (
                       <tr key={row.product_code}>
                         <td>
                           <strong>{row.product_name || `Produto #${row.product_code}`}</strong>
@@ -2000,9 +2101,12 @@ function App() {
                     ))}
                   </tbody>
                 </table>
+                {!analyticsView.velocity.length && (
+                  <div className="empty-state">Sem dados de velocidade de venda.</div>
+                )}
               </div>
-            </article>
-            <article className="card table-card analysis-wide">
+            </Card>
+            <Card className="card table-card analysis-wide">
               <div className="card-header">
                 <div>
                   <p className="eyebrow">GIRO DE ESTOQUE</p>
@@ -2023,7 +2127,7 @@ function App() {
                     </tr>
                   </thead>
                   <tbody>
-                    {analytics.turnover
+                    {analyticsView.turnover
                       .filter((row) => row.turnover != null)
                       .sort((a, b) => Number(b.turnover || 0) - Number(a.turnover || 0))
                       .slice(0, 15)
@@ -2055,21 +2159,24 @@ function App() {
                       ))}
                   </tbody>
                 </table>
+                {!analyticsView.turnover.some((row) => row.turnover != null) && (
+                  <div className="empty-state">Sem histórico suficiente para calcular giro.</div>
+                )}
               </div>
-            </article>
-            <StoreDailyAnalysis rows={analytics.store_daily} />
+            </Card>
+            <StoreDailyAnalysis rows={analyticsView.store_daily} />
           </section>
         )}
 
         {activeView === 'overview' && (
           <section className="bottom-grid">
-            <article className="card table-card">
+            <Card className="card table-card">
               <div className="card-header">
                 <div>
                   <p className="eyebrow">CATÁLOGO</p>
                   <h2>Produtos, preços e saldo</h2>
                 </div>
-                <input
+                <Input
                   className="search"
                   placeholder="Buscar produto"
                   value={draftProductSearch}
@@ -2132,14 +2239,16 @@ function App() {
                   </tbody>
                 </table>
               </div>
-            </article>
-            <article className="card stock-card">
+            </Card>
+            <Card className="card stock-card">
               <div className="card-header">
                 <div>
                   <p className="eyebrow">ESTOQUE</p>
                   <h2>Valores de estoque</h2>
                 </div>
-                <span className="period-pill">{inventory.length} itens</span>
+                <Badge variant="outline" className="period-pill">
+                  {inventory.length} itens
+                </Badge>
               </div>
               <div className="stock-total">
                 {moneyPrecise.format(stockSaleTotal)}
@@ -2163,7 +2272,7 @@ function App() {
                   <div className="empty-state">Aguardando snapshot de estoque.</div>
                 )}
               </div>
-            </article>
+            </Card>
           </section>
         )}
         {activeView === 'sales' && (

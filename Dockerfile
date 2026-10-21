@@ -22,6 +22,8 @@ RUN node --input-type=module -e 'import {readFileSync,writeFileSync,existsSync} 
        done \
     && mkdir -p /runtime/scripts/deploy \
     && cp scripts/deploy/env.mjs scripts/deploy/predeploy.mjs scripts/deploy/start.sh /runtime/scripts/deploy/ \
+    && mkdir -p /runtime/scripts/linx \
+    && cp -R scripts/linx/. /runtime/scripts/linx/ \
     && if [ -d scripts/auth ]; then cp -R scripts/auth /runtime/scripts/auth; fi \
     && cp renova.project.json /runtime/renova.project.json
 

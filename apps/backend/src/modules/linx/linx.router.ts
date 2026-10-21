@@ -5,8 +5,25 @@ import { publicProcedure, router } from '../../server/trpc.js';
 const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use a data no formato YYYY-MM-DD.');
 const companies = z.array(z.string().min(1).max(32)).max(100).default([]);
 const period = z.object({ start: day, end: day, companies }).strict();
+const syncInput = z
+  .object({
+    daysBack: z.number().int().min(1).max(31).default(3),
+    profile: z.enum(['dashboard', 'full']).default('dashboard'),
+  })
+  .strict();
 
 export const linxRouter = router({
+  sync: publicProcedure.input(syncInput).mutation(async ({ ctx, input }) => {
+    if (!ctx.sync) throw new TRPCError({ code: 'SERVICE_UNAVAILABLE' });
+    try {
+      return await ctx.sync.start(input);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('já está em execução')) {
+        throw new TRPCError({ code: 'CONFLICT', message: error.message });
+      }
+      throw new TRPCError({ code: 'SERVICE_UNAVAILABLE', message: 'Coleta Linx indisponível.' });
+    }
+  }),
   stores: publicProcedure.query(async ({ ctx }) => {
     if (!ctx.linx) throw new TRPCError({ code: 'SERVICE_UNAVAILABLE' });
     return { data: await ctx.linx.listStores() };

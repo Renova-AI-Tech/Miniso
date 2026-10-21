@@ -7,6 +7,8 @@ ficam nos planos locais; ferramenta externa de tarefas é opcional.
 
 - Monorepo pnpm: `@renova/frontend` (Vite/React), `@renova/backend` (Fastify/tRPC),
   `@renova/ui`, `@renova/db-types` e `@renova/dbmigrator`.
+- Produto Miniso adaptado: dashboard Linx, repositório de serviços, coletor XML em
+  `scripts/linx`, materialização analítica e mutation `linx.sync` em segundo plano.
 - Postgres Docker isolado por clone, papéis separados e migrations com lock/checksum.
 - Perfil público somente leitura com três exemplos sintéticos em `/referência`
   (alias `/referencia`). `/` começa com um guia substituível pelo produto. Sem auth no runtime público.
@@ -62,3 +64,9 @@ cada clone cria seus próprios recursos quando precisar publicar.
 - [ ] Validar onboarding com pessoas técnicas e não técnicas; ensaio de agente não substitui aceite humano.
 - [ ] Ativar CODEOWNERS com usuários reais se o projeto quiser revisão por responsáveis.
 - [ ] Definir destino/acesso/custo e política de backup de cada novo projeto antes de dados reais.
+- [ ] Preencher as credenciais Linx no ambiente seguro e executar a primeira coleta real.
+- [ ] Confirmar no primeiro uso que o preflight de credenciais permite iniciar a coleta
+  somente quando `LINX_USER`, `LINX_PASSWORD`, `LINX_KEY` e `LINX_PORTAL` estão presentes.
+- [ ] Medir a primeira coleta real e ajustar os limites de lote se a resposta da Linx
+  indicar outra capacidade, preservando a carga completa como operação de backfill.
+- [ ] Validar reconciliação dos dados coletados por loja e produto.

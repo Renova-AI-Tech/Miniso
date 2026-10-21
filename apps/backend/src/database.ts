@@ -4,6 +4,7 @@ import { Kysely, PostgresDialect } from 'kysely';
 import pg from 'pg';
 import type { BackendEnv } from './env.js';
 import { createLinxRepository } from './modules/linx/linx.repository.js';
+import { createLinxSyncRunner } from './modules/linx/linx.sync.js';
 
 export function createDatabase(env: BackendEnv, onConnectionError: () => void = () => {}) {
   const pool = new pg.Pool({
@@ -20,6 +21,11 @@ export function createDatabase(env: BackendEnv, onConnectionError: () => void = 
   const database = new Kysely<Database>({ dialect: new PostgresDialect({ pool }) });
   return {
     linx: createLinxRepository(database),
+    sync: createLinxSyncRunner(
+      process.cwd(),
+      env.MIGRATION_DATABASE_URL,
+      Boolean(env.LINX_USER && env.LINX_PASSWORD && env.LINX_KEY && env.LINX_PORTAL),
+    ),
     readiness: () =>
       checkReadiness(
         pool,

@@ -636,4 +636,74 @@ ALTER DEFAULT PRIVILEGES FOR ROLE renova_migrator IN SCHEMA ingest, analytics, r
 ALTER DEFAULT PRIVILEGES FOR ROLE renova_migrator IN SCHEMA ingest, analytics, replica GRANT SELECT ON SEQUENCES TO renova_runtime;
 `,
   }),
+  Object.freeze({
+    id: '002_linx_numeric_normalization',
+    sql: `
+DROP VIEW IF EXISTS analytics.daily_sales;
+CREATE VIEW analytics.daily_sales AS
+SELECT
+    m.portal,
+    m.company_cnpj,
+    s.trade_name AS store_name,
+    m.document_date,
+    m.product_code,
+    p.name AS product_name,
+    p.supplier_code,
+    coalesce(sup.name, sup.legal_name, p.supplier_name) AS supplier_name,
+    p.classification_name,
+    p.category_name,
+    p.class_name,
+    p.subclass_name,
+    p.origin_name,
+    sum(CASE
+        WHEN btrim(m.operation) = 'S' AND btrim(m.transaction_type) = 'V' THEN m.quantity
+        WHEN btrim(m.operation) = 'DS' THEN -m.quantity
+        ELSE 0
+    END) AS net_quantity,
+    sum(CASE
+        WHEN btrim(m.operation) = 'S' AND btrim(m.transaction_type) = 'V' THEN coalesce(NULLIF(replace(m.raw_payload->>'valor_liquido', ',', '.'), '')::numeric, m.quantity * m.unit_price)
+        WHEN btrim(m.operation) = 'DS' THEN -coalesce(NULLIF(replace(m.raw_payload->>'valor_liquido', ',', '.'), '')::numeric, m.quantity * m.unit_price)
+        ELSE 0
+    END) AS net_revenue,
+    sum(CASE
+        WHEN btrim(m.operation) = 'S' AND btrim(m.transaction_type) = 'V' THEN m.quantity * coalesce(m.cost_price, 0)
+        WHEN btrim(m.operation) = 'DS' THEN -(m.quantity * coalesce(m.cost_price, 0))
+        ELSE 0
+    END) AS cost_value,
+    sum(CASE
+        WHEN btrim(m.operation) = 'S' AND btrim(m.transaction_type) = 'V' THEN coalesce(NULLIF(replace(m.raw_payload->>'valor_liquido', ',', '.'), '')::numeric, m.quantity * coalesce(m.unit_price, 0)) - m.quantity * coalesce(m.cost_price, 0)
+        WHEN btrim(m.operation) = 'DS' THEN -(coalesce(NULLIF(replace(m.raw_payload->>'valor_liquido', ',', '.'), '')::numeric, m.quantity * coalesce(m.unit_price, 0)) - m.quantity * coalesce(m.cost_price, 0))
+        ELSE 0
+    END) AS gross_margin
+FROM analytics.sales_movement m
+LEFT JOIN analytics.store s ON s.portal = m.portal AND s.company_cnpj = m.company_cnpj
+LEFT JOIN analytics.product p ON p.portal = m.portal AND p.product_code = m.product_code
+LEFT JOIN analytics.supplier sup ON sup.portal = p.portal AND sup.supplier_code = p.supplier_code
+WHERE NOT m.cancelled
+  AND NOT m.deleted
+  AND m.included_in_report
+  AND m.product_code <> 26736
+GROUP BY m.portal, m.company_cnpj, s.trade_name, m.document_date, m.product_code,
+         p.name, p.supplier_code, sup.name, sup.legal_name, p.supplier_name,
+         p.classification_name, p.category_name, p.class_name, p.subclass_name, p.origin_name;
+`,
+  }),
+  Object.freeze({
+    id: '003_linx_collection_run_indexes',
+    sql: `
+DO $$
+DECLARE endpoint record;
+BEGIN
+    FOR endpoint IN
+        SELECT table_name FROM replica.endpoint_catalog
+    LOOP
+        EXECUTE format(
+            'CREATE INDEX IF NOT EXISTS %I ON replica.%I (_collection_run_id)',
+            endpoint.table_name || '_run_idx', endpoint.table_name
+        );
+    END LOOP;
+END;
+$$;
+`,
+  }),
 ]);

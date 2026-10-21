@@ -2,6 +2,33 @@
 
 Cada sessão longa acrescenta um bloco no topo. Não apague histórico.
 
+## 2026-10-20 — coletor Linx integrado ao template
+
+- A persistência da réplica passou a agrupar até 250 registros por `INSERT`,
+  mantendo `ON CONFLICT` e o limite de parâmetros do PostgreSQL; o cache de
+  colunas evita repetir `ALTER TABLE` a cada página. Uma carga sintética com
+  2.400 registros confirmou a coleta, a escrita em lote e a limpeza do fixture.
+- A materialização passou a receber os `runId` da coleta e filtrar somente os
+  registros alterados na execução incremental. Índices por `_collection_run_id`
+  foram adicionados na migration `003_linx_collection_run_indexes`; uma carga
+  sintética confirmou uma loja, produto, venda e snapshot sem reprocessar histórico.
+- Postgres local iniciado com Docker e migrations `001_linx_analytics`,
+  `002_linx_numeric_normalization` e `003_linx_collection_run_indexes` aplicadas.
+- Criados `scripts/linx/collect.mjs`, `materialize.sql`, `materialize.mjs` e
+  `sync.mjs`: coleta XML, replica idempotente, materialização analítica e cache diária.
+- O backend ganhou a procedure `linx.sync`, que dispara o job em segundo plano,
+  rejeita execuções concorrentes e mantém o papel web somente leitura.
+- Docker copia os scripts do coletor para o runtime. Credenciais ficam apenas em
+  variáveis de ambiente (`LINX_*` e `MIGRATION_DATABASE_URL`).
+- A mutation `linx.sync` agora valida as credenciais obrigatórias antes de iniciar
+  o processo, retornando uma mensagem acionável quando o `.env` ainda não foi preenchido.
+- Primeira tentativa com o `.env` preenchido alcançou a API real, mas a Linx recusou
+  `LinxGrupoLojas` por usuário ou senha inválidos; o parser agora expõe a mensagem
+  detalhada de `ResponseError` para facilitar a correção sem registrar segredos.
+- Typecheck/build do backend, frontend e migrador passaram; a materialização vazia
+  foi executada contra o Postgres local. Coleta real da Linx ainda depende de corrigir
+  as credenciais no `.env` e executar o job.
+
 ## 2026-10-19 — autenticação opcional validada localmente
 
 - CI da main `e085504` confirmado verde: [run 39341572792](https://github.com/Renova-AI-Tech/renova-template/actions/runs/39341572792).
@@ -211,3 +238,15 @@ Cada sessão longa acrescenta um bloco no topo. Não apague histórico.
 - `pnpm check:quick` e `git diff --check` passaram; revisão independente aprovada.
   Nenhum banco local foi modificado.
   [Registro](../specs/renova-project-template/railway-validation.md).
+## 2026-10-20 — painel Miniso alinhado ao Renova UI
+
+- A dashboard operacional passou a usar os componentes oficiais `@renova/ui` para
+  superfícies, botões, campos, checkboxes, labels e badges.
+- O tema global do Renova foi carregado na entrada do frontend, incluindo tokens,
+  fontes locais e estados de foco, enquanto os estilos de layout do produto foram
+  preservados para não alterar o comportamento dos gráficos e filtros.
+- O bloco de análises agora mantém todas as visões do painel antigo visíveis mesmo
+  quando a API ainda não retornou dados, exibindo estados vazios para fornecedor,
+  origem, categoria, velocidade, giro e análise diária por loja.
+- Tipagem, build de produção, harness e Biome passaram. O E2E não foi executado
+  porque o runner não conseguiu preparar o banco descartável desta máquina.

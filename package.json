@@ -12,6 +12,7 @@
     "dev": "node scripts/project/dev.mjs",
     "db:up": "node scripts/db/cli.mjs up --target local",
     "db:migrate": "node scripts/db/cli.mjs migrate --target local",
+    "linx:sync": "node scripts/linx/sync.mjs",
     "build": "pnpm -r --if-present build",
     "init": "bash scripts/init.sh",
     "harness:check": "node scripts/harness/check.mjs",

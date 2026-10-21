@@ -2,10 +2,12 @@ import { initTRPC } from '@trpc/server';
 import type { AnyProcedure, AnyRouter } from '@trpc/server';
 import type { AccessPolicy } from './security.js';
 import type { LinxRepository } from '../modules/linx/linx.repository.js';
+import type { LinxSyncRunner } from '../modules/linx/linx.sync.js';
 
 export interface TrpcContext {
   requestId: string;
   linx?: LinxRepository | undefined;
+  sync?: LinxSyncRunner | undefined;
 }
 
 const t = initTRPC

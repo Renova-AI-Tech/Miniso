@@ -139,10 +139,12 @@ export async function getSyncAudit(page = 1, pageSize = 50, runId?: number) {
 }
 
 export async function startSync(
-  _daysBack = 3,
-  _profile: 'dashboard' | 'full' = 'dashboard',
+  daysBack = 3,
+  profile: 'dashboard' | 'full' = 'dashboard',
 ): Promise<SyncStatus> {
-  throw new Error('A coleta Linx será habilitada pela camada collector do projeto.');
+  await client.linx.sync.mutate({ daysBack, profile });
+  const status = (await client.linx.syncStatus.query()) as unknown as SyncStatus;
+  return { ...status, running: true };
 }
 
 /** Compatibility surface kept for the template reference page. */
