@@ -435,9 +435,9 @@ export function createLinxRepository(database: QueryDatabase): LinxRepository {
                  coalesce(sum(i.quantity), 0)::float8 AS stock_quantity,
                  coalesce(sum(i.quantity * coalesce(i.sale_price, 0)), 0)::float8 AS stock_sale_value,
                  coalesce(sum(i.total_cost), 0)::float8 AS stock_cost_value,
-                 CASE WHEN extract(day from (${end}::date - ${start}::date)) + 1 > 0 THEN sum(d.net_quantity) / (extract(day from (${end}::date - ${start}::date)) + 1) ELSE 0 END AS sales_velocity,
+                 CASE WHEN (${end}::date - ${start}::date + 1) > 0 THEN sum(d.net_quantity) / (${end}::date - ${start}::date + 1) ELSE 0 END AS sales_velocity,
                  CASE WHEN sum(i.quantity) > 0 THEN sum(d.net_quantity) / sum(i.quantity) ELSE NULL END AS turnover,
-                 CASE WHEN sum(d.net_quantity) > 0 THEN sum(i.quantity) / (sum(d.net_quantity) / (extract(day from (${end}::date - ${start}::date)) + 1)) ELSE NULL END AS coverage_days
+                 CASE WHEN sum(d.net_quantity) > 0 THEN sum(i.quantity) / (sum(d.net_quantity) / (${end}::date - ${start}::date + 1)) ELSE NULL END AS coverage_days
           FROM analytics.daily_sales_cache d
           LEFT JOIN analytics.inventory_snapshot i ON i.company_cnpj = d.company_cnpj AND i.product_code = d.product_code AND i.snapshot_date = d.document_date
           WHERE d.document_date BETWEEN ${start}::date AND ${end}::date${filter}

@@ -6,7 +6,14 @@ const execute = promisify(execFile);
 
 export async function buildMigrator(root) {
   try {
-    await execute('pnpm', ['--filter', '@renova/dbmigrator', 'build'], { cwd: root });
+    // Windows exposes pnpm through a command shim. Invoke it through cmd.exe
+    // because Node's direct spawn of .cmd files can fail with EINVAL.
+    const command = process.platform === 'win32' ? 'cmd.exe' : 'pnpm';
+    const args =
+      process.platform === 'win32'
+        ? ['/d', '/s', '/c', 'pnpm', '--filter', '@renova/dbmigrator', 'build']
+        : ['--filter', '@renova/dbmigrator', 'build'];
+    await execute(command, args, { cwd: root });
   } catch {
     throw new Error(
       'Não foi possível compilar o migrador. Execute pnpm install e verifique o typecheck.',

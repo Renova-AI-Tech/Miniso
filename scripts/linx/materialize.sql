@@ -1,19 +1,23 @@
 INSERT INTO analytics.store
     (portal, company_cnpj, company_code, legal_name, trade_name, active, raw_payload, updated_at)
 SELECT DISTINCT ON (
-    NULLIF(_payload->>'portal', '')::integer,
+    _portal,
     regexp_replace(coalesce(_payload->>'CNPJ', ''), '[^0-9]', '', 'g')
 )
-    NULLIF(_payload->>'portal', '')::integer,
+    _portal,
     regexp_replace(coalesce(_payload->>'CNPJ', ''), '[^0-9]', '', 'g'),
-    NULLIF(_payload->>'empresa', '')::integer,
-    NULLIF(_payload->>'nome_empresa', ''),
-    coalesce(NULLIF(_payload->>'nome_empresa', ''), NULLIF(_payload->>'nome_portal', '')),
+    CASE
+      WHEN _payload->>'empresa' ~ '^-?[0-9]+([.][0-9]+)?$'
+        THEN (_payload->>'empresa')::numeric::integer
+      ELSE NULL
+    END,
+    coalesce(NULLIF(_payload->>'nome_empresa', ''), NULLIF(_payload->>'rede', '')),
+    coalesce(NULLIF(_payload->>'nome_empresa', ''), NULLIF(_payload->>'rede', ''), NULLIF(_payload->>'nome_portal', '')),
     true, _payload, now()
 FROM replica.linx_grupo_lojas
 WHERE length(regexp_replace(coalesce(_payload->>'CNPJ', ''), '[^0-9]', '', 'g')) = 14
   AND EXISTS (SELECT 1 FROM linx_materialize_runs mr WHERE mr.id = _collection_run_id)
-ORDER BY NULLIF(_payload->>'portal', '')::integer,
+ORDER BY _portal,
          regexp_replace(coalesce(_payload->>'CNPJ', ''), '[^0-9]', '', 'g'),
          _linx_timestamp DESC NULLS LAST, _collected_at DESC, _id DESC
 ON CONFLICT (portal, company_cnpj) DO UPDATE SET
@@ -26,19 +30,19 @@ ON CONFLICT (portal, company_cnpj) DO UPDATE SET
 INSERT INTO analytics.store
     (portal, company_cnpj, company_code, legal_name, trade_name, active, raw_payload, updated_at)
 SELECT DISTINCT ON (
-    NULLIF(_payload->>'portal', '')::integer,
+    NULLIF(_payload->>'portal', '')::numeric::integer,
     regexp_replace(coalesce(_payload->>'cnpj_emp', ''), '[^0-9]', '', 'g')
 )
-    NULLIF(_payload->>'portal', '')::integer,
+    NULLIF(_payload->>'portal', '')::numeric::integer,
     regexp_replace(coalesce(_payload->>'cnpj_emp', ''), '[^0-9]', '', 'g'),
-    NULLIF(_payload->>'empresa', '')::integer,
+    NULLIF(_payload->>'empresa', '')::numeric::integer,
     NULLIF(_payload->>'razao_emp', ''),
     NULLIF(_payload->>'nome_emp', ''),
     true, _payload, now()
 FROM replica.linx_lojas
 WHERE length(regexp_replace(coalesce(_payload->>'cnpj_emp', ''), '[^0-9]', '', 'g')) = 14
   AND EXISTS (SELECT 1 FROM linx_materialize_runs mr WHERE mr.id = _collection_run_id)
-ORDER BY NULLIF(_payload->>'portal', '')::integer,
+ORDER BY NULLIF(_payload->>'portal', '')::numeric::integer,
          regexp_replace(coalesce(_payload->>'cnpj_emp', ''), '[^0-9]', '', 'g'),
          _linx_timestamp DESC NULLS LAST, _collected_at DESC, _id DESC
 ON CONFLICT (portal, company_cnpj) DO UPDATE SET
@@ -51,11 +55,11 @@ ON CONFLICT (portal, company_cnpj) DO UPDATE SET
 INSERT INTO analytics.supplier
     (portal, supplier_code, document, name, legal_name, active, raw_payload, updated_at)
 SELECT DISTINCT ON (
-    NULLIF(_payload->>'portal', '')::integer,
-    NULLIF(_payload->>'cod_cliente', '')::bigint
+    NULLIF(_payload->>'portal', '')::numeric::integer,
+    NULLIF(_payload->>'cod_cliente', '')::numeric::bigint
 )
-    NULLIF(_payload->>'portal', '')::integer,
-    NULLIF(_payload->>'cod_cliente', '')::bigint,
+    NULLIF(_payload->>'portal', '')::numeric::integer,
+    NULLIF(_payload->>'cod_cliente', '')::numeric::bigint,
     NULLIF(regexp_replace(coalesce(_payload->>'doc_cliente', ''), '[^0-9]', '', 'g'), ''),
     NULLIF(_payload->>'nome_cliente', ''),
     NULLIF(_payload->>'razao_cliente', ''),
@@ -66,8 +70,8 @@ WHERE upper(coalesce(_payload->>'tipo_cliente', '')) = 'F'
   AND (_payload->>'portal') ~ '^[0-9]+$'
   AND (_payload->>'cod_cliente') ~ '^[0-9]+$'
   AND EXISTS (SELECT 1 FROM linx_materialize_runs mr WHERE mr.id = _collection_run_id)
-ORDER BY NULLIF(_payload->>'portal', '')::integer,
-         NULLIF(_payload->>'cod_cliente', '')::bigint,
+ORDER BY NULLIF(_payload->>'portal', '')::numeric::integer,
+         NULLIF(_payload->>'cod_cliente', '')::numeric::bigint,
          _linx_timestamp DESC NULLS LAST, _collected_at DESC
 ON CONFLICT (portal, supplier_code) DO UPDATE SET
     document = coalesce(EXCLUDED.document, analytics.supplier.document),
@@ -85,31 +89,31 @@ INSERT INTO analytics.product
      category_name, class_id, class_name, subclass_id, subclass_name,
      origin_code, origin_name, raw_payload, updated_at)
 SELECT DISTINCT ON (
-    NULLIF(_payload->>'portal', '')::integer,
-    NULLIF(_payload->>'cod_produto', '')::bigint
+    NULLIF(_payload->>'portal', '')::numeric::integer,
+    NULLIF(_payload->>'cod_produto', '')::numeric::bigint
 )
-    NULLIF(_payload->>'portal', '')::integer,
-    NULLIF(_payload->>'cod_produto', '')::bigint,
+    NULLIF(_payload->>'portal', '')::numeric::integer,
+    NULLIF(_payload->>'cod_produto', '')::numeric::bigint,
     NULLIF(_payload->>'cod_barra', ''),
     NULLIF(_payload->>'referencia', ''),
     NULLIF(_payload->>'nome', ''),
     NULLIF(_payload->>'descricao_basica', ''),
-    NULLIF(_payload->>'id_marca', '')::bigint, NULLIF(_payload->>'desc_marca', ''),
-    NULLIF(_payload->>'id_linha', '')::bigint, NULLIF(_payload->>'desc_linha', ''),
-    NULLIF(_payload->>'id_colecao', '')::bigint, NULLIF(_payload->>'desc_colecao', ''),
-    NULLIF(_payload->>'id_setor', '')::bigint, NULLIF(_payload->>'desc_setor', ''),
+    NULLIF(_payload->>'id_marca', '')::numeric::bigint, NULLIF(_payload->>'desc_marca', ''),
+    NULLIF(_payload->>'id_linha', '')::numeric::bigint, NULLIF(_payload->>'desc_linha', ''),
+    NULLIF(_payload->>'id_colecao', '')::numeric::bigint, NULLIF(_payload->>'desc_colecao', ''),
+    NULLIF(_payload->>'id_setor', '')::numeric::bigint, NULLIF(_payload->>'desc_setor', ''),
     NULLIF(_payload->>'unidade', ''),
     upper(coalesce(_payload->>'desativado', 'N')) IN ('S', 'SIM', 'TRUE', '1'),
     NULLIF(_payload->>'dt_update', '')::timestamp,
-    NULLIF(_payload->>'timestamp', '')::bigint,
-    NULLIF(_payload->>'cod_fornecedor', '')::bigint,
-    NULLIF(_payload->>'id_classificacao', '')::bigint,
+    NULLIF(_payload->>'timestamp', '')::numeric::bigint,
+    NULLIF(_payload->>'cod_fornecedor', '')::numeric::bigint,
+    NULLIF(_payload->>'id_classificacao', '')::numeric::bigint,
     NULLIF(_payload->>'desc_classificacao', ''),
-    NULLIF(_payload->>'id_setor', '')::bigint,
+    NULLIF(_payload->>'id_setor', '')::numeric::bigint,
     NULLIF(_payload->>'desc_setor', ''),
-    NULLIF(_payload->>'id_linha', '')::bigint,
+    NULLIF(_payload->>'id_linha', '')::numeric::bigint,
     NULLIF(_payload->>'desc_linha', ''),
-    NULLIF(_payload->>'id_colecao', '')::bigint,
+    NULLIF(_payload->>'id_colecao', '')::numeric::bigint,
     NULLIF(_payload->>'desc_colecao', ''),
     NULLIF(_payload->>'origem_mercadoria', ''),
     CASE WHEN _payload->>'origem_mercadoria' = '0' THEN 'Nacional'
@@ -120,8 +124,8 @@ FROM replica.linx_produtos
 WHERE (_payload->>'portal') ~ '^[0-9]+$'
   AND (_payload->>'cod_produto') ~ '^[0-9]+$'
   AND EXISTS (SELECT 1 FROM linx_materialize_runs mr WHERE mr.id = _collection_run_id)
-ORDER BY NULLIF(_payload->>'portal', '')::integer,
-         NULLIF(_payload->>'cod_produto', '')::bigint,
+ORDER BY NULLIF(_payload->>'portal', '')::numeric::integer,
+         NULLIF(_payload->>'cod_produto', '')::numeric::bigint,
          _linx_timestamp DESC NULLS LAST, _collected_at DESC
 ON CONFLICT (portal, product_code) DO UPDATE SET
     barcode = coalesce(EXCLUDED.barcode, analytics.product.barcode),
@@ -144,22 +148,49 @@ ON CONFLICT (portal, product_code) DO UPDATE SET
 
 INSERT INTO analytics.product (portal, product_code, barcode, raw_payload)
 SELECT DISTINCT ON (
-    NULLIF(_payload->>'portal', '')::integer,
-    NULLIF(_payload->>'cod_produto', '')::bigint
+    NULLIF(_payload->>'portal', '')::numeric::integer,
+    NULLIF(_payload->>'cod_produto', '')::numeric::bigint
 )
-    NULLIF(_payload->>'portal', '')::integer,
-    NULLIF(_payload->>'cod_produto', '')::bigint,
+    NULLIF(_payload->>'portal', '')::numeric::integer,
+    NULLIF(_payload->>'cod_produto', '')::numeric::bigint,
     NULLIF(_payload->>'cod_barra', ''), _payload
 FROM replica.linx_produtos_detalhes
 WHERE (_payload->>'portal') ~ '^[0-9]+$'
   AND (_payload->>'cod_produto') ~ '^[0-9]+$'
   AND EXISTS (SELECT 1 FROM linx_materialize_runs mr WHERE mr.id = _collection_run_id)
-ORDER BY NULLIF(_payload->>'portal', '')::integer,
-         NULLIF(_payload->>'cod_produto', '')::bigint,
+ORDER BY NULLIF(_payload->>'portal', '')::numeric::integer,
+         NULLIF(_payload->>'cod_produto', '')::numeric::bigint,
          _linx_timestamp DESC NULLS LAST, _collected_at DESC
 ON CONFLICT (portal, product_code) DO UPDATE SET
     barcode = coalesce(EXCLUDED.barcode, analytics.product.barcode),
     raw_payload = EXCLUDED.raw_payload,
+    updated_at = now();
+
+-- O endpoint LinxProdutos nem sempre retorna o cadastro completo no mesmo
+-- recorte da coleta. Criamos uma linha mínima para os produtos presentes no
+-- movimento; quando o cadastro detalhado chegar, o upsert a complementa.
+INSERT INTO analytics.product (portal, product_code, barcode, raw_payload)
+SELECT DISTINCT ON (
+    NULLIF(_payload->>'portal', '')::numeric::integer,
+    NULLIF(_payload->>'cod_produto', '')::numeric::bigint
+)
+    NULLIF(_payload->>'portal', '')::numeric::integer,
+    NULLIF(_payload->>'cod_produto', '')::numeric::bigint,
+    NULLIF(_payload->>'cod_barra', ''),
+    _payload
+FROM replica.linx_movimento
+WHERE (_payload->>'portal') ~ '^[0-9]+$'
+  AND (_payload->>'cod_produto') ~ '^[0-9]+$'
+  AND EXISTS (SELECT 1 FROM linx_materialize_runs mr WHERE mr.id = _collection_run_id)
+ORDER BY NULLIF(_payload->>'portal', '')::numeric::integer,
+         NULLIF(_payload->>'cod_produto', '')::numeric::bigint,
+         _linx_timestamp DESC NULLS LAST, _collected_at DESC, _id DESC
+ON CONFLICT (portal, product_code) DO UPDATE SET
+    barcode = coalesce(EXCLUDED.barcode, analytics.product.barcode),
+    raw_payload = CASE
+      WHEN analytics.product.raw_payload = '{}'::jsonb THEN EXCLUDED.raw_payload
+      ELSE analytics.product.raw_payload
+    END,
     updated_at = now();
 
 INSERT INTO analytics.sales_movement
@@ -169,18 +200,22 @@ INSERT INTO analytics.sales_movement
      deleted, included_in_report, quantity, unit_price, gross_value, liquid_value,
      cost_price, deposit, raw_payload, collected_at)
 SELECT
-    NULLIF(_payload->>'portal', '')::integer,
+    NULLIF(_payload->>'portal', '')::numeric::integer,
     regexp_replace(coalesce(_payload->>'cnpj_emp', ''), '[^0-9]', '', 'g'),
-    NULLIF(_payload->>'timestamp', '')::bigint,
-    NULLIF(_payload->>'empresa', '')::integer,
-    NULLIF(_payload->>'transacao', '')::bigint,
+    NULLIF(_payload->>'timestamp', '')::numeric::bigint,
+    NULLIF(_payload->>'empresa', '')::numeric::integer,
+    NULLIF(_payload->>'transacao', '')::numeric::bigint,
     NULLIF(_payload->>'documento', ''), NULLIF(_payload->>'serie', ''),
     NULLIF(left(_payload->>'data_documento', 10), '')::date,
-    NULLIF(_payload->>'data_lancamento', '')::timestamp,
-    NULLIF(_payload->>'cod_produto', '')::bigint,
+    CASE
+      WHEN _payload->>'data_lancamento' ~ '^\d{4}-\d{2}-\d{2}'
+        THEN (_payload->>'data_lancamento')::timestamp
+      ELSE NULL
+    END,
+    NULLIF(_payload->>'cod_produto', '')::numeric::bigint,
     NULLIF(_payload->>'cod_barra', ''),
-    NULLIF(_payload->>'codigo_cliente', '')::bigint,
-    NULLIF(_payload->>'cod_vendedor', '')::bigint,
+    NULLIF(_payload->>'codigo_cliente', '')::numeric::bigint,
+    NULLIF(_payload->>'cod_vendedor', '')::numeric::bigint,
     trim(_payload->>'operacao'), trim(_payload->>'tipo_transacao'),
     upper(coalesce(_payload->>'cancelado', 'N')) IN ('S', 'SIM', 'TRUE', '1'),
     upper(coalesce(_payload->>'excluido', 'N')) IN ('S', 'SIM', 'TRUE', '1'),
@@ -213,17 +248,17 @@ ON CONFLICT (portal, company_cnpj, linx_timestamp) DO UPDATE SET
 
 WITH inventory_rows AS (
     SELECT DISTINCT ON (
-        NULLIF(_payload->>'portal', '')::integer,
+        NULLIF(_payload->>'portal', '')::numeric::integer,
         regexp_replace(coalesce(_payload->>'cnpj_emp', ''), '[^0-9]', '', 'g'),
-        NULLIF(_payload->>'cod_produto', '')::bigint,
+        NULLIF(_payload->>'cod_produto', '')::numeric::bigint,
         coalesce((SELECT window_end FROM replica.collection_run cr WHERE cr.id = _collection_run_id), _collected_at::date)
     )
-        NULLIF(_payload->>'portal', '')::integer AS portal,
+        NULLIF(_payload->>'portal', '')::numeric::integer AS portal,
         regexp_replace(coalesce(_payload->>'cnpj_emp', ''), '[^0-9]', '', 'g') AS company_cnpj,
-        NULLIF(_payload->>'cod_produto', '')::bigint AS product_code,
+        NULLIF(_payload->>'cod_produto', '')::numeric::bigint AS product_code,
         coalesce((SELECT window_end FROM replica.collection_run cr WHERE cr.id = _collection_run_id), _collected_at::date) AS snapshot_date,
-        coalesce(NULLIF(_payload->>'timestamp', '')::bigint, _id) AS linx_timestamp,
-        NULLIF(_payload->>'empresa', '')::integer AS company_code,
+        coalesce(NULLIF(_payload->>'timestamp', '')::numeric::bigint, _id) AS linx_timestamp,
+        NULLIF(_payload->>'empresa', '')::numeric::integer AS company_code,
         replace(NULLIF(_payload->>'quantidade', ''), ',', '.')::numeric AS quantity,
         replace(NULLIF(_payload->>'custo_medio', ''), ',', '.')::numeric AS average_cost,
         replace(NULLIF(_payload->>'custototal', ''), ',', '.')::numeric AS total_cost,
@@ -236,11 +271,11 @@ WITH inventory_rows AS (
       AND (_payload->>'cod_produto') ~ '^[0-9]+$'
       AND length(regexp_replace(coalesce(_payload->>'cnpj_emp', ''), '[^0-9]', '', 'g')) = 14
       AND EXISTS (SELECT 1 FROM linx_materialize_runs mr WHERE mr.id = _collection_run_id)
-    ORDER BY NULLIF(_payload->>'portal', '')::integer,
+    ORDER BY NULLIF(_payload->>'portal', '')::numeric::integer,
              regexp_replace(coalesce(_payload->>'cnpj_emp', ''), '[^0-9]', '', 'g'),
-             NULLIF(_payload->>'cod_produto', '')::bigint,
+             NULLIF(_payload->>'cod_produto', '')::numeric::bigint,
              coalesce((SELECT window_end FROM replica.collection_run cr WHERE cr.id = _collection_run_id), _collected_at::date),
-             coalesce(NULLIF(_payload->>'timestamp', '')::bigint, _id) DESC,
+             coalesce(NULLIF(_payload->>'timestamp', '')::numeric::bigint, _id) DESC,
              _collected_at DESC, _id DESC
 )
 INSERT INTO analytics.inventory_snapshot

@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
-import { resolve } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { loadEnvFile } from 'node:process';
 import { pathToFileURL } from 'node:url';
 import pg from 'pg';
@@ -77,7 +78,10 @@ function tagContents(xml, tag) {
 }
 
 function allTagContents(xml, tag) {
-  const pattern = new RegExp(`<${tag}(?:\\s[^>]*)?>([\\s\\S]*?)</${tag}>`, 'gi');
+  const pattern = new RegExp(
+    `<${tag}(?:\\s+(?!\\/)[^>]*)?\\s*(?:\\/>|>([\\s\\S]*?)</${tag}>)`,
+    'gi',
+  );
   return [...xml.matchAll(pattern)].map((match) => match[1] ?? '');
 }
 
@@ -100,19 +104,45 @@ export function parseResponse(xml, method) {
       rows.push(Object.fromEntries(values.map((value, index) => [`campo_${index + 1}`, value])));
       continue;
     }
-    if (values.length !== columns.length) throw new Error(`Resposta inconsistente em ${method}.`);
-    rows.push(Object.fromEntries(columns.map((column, index) => [column, values[index]])));
+    if (values.length > columns.length) throw new Error(`Resposta inconsistente em ${method}.`);
+    rows.push(Object.fromEntries(columns.map((column, index) => [column, values[index] ?? null])));
   }
   return rows;
 }
 
+function collectionValues(path) {
+  try {
+    const collection = JSON.parse(readFileSync(path, 'utf8').replace(/^\uFEFF/, ''));
+    return Object.fromEntries(
+      (Array.isArray(collection?.variable) ? collection.variable : [])
+        .filter((item) => typeof item?.key === 'string')
+        .map((item) => [item.key, String(item.value ?? item.current ?? '')]),
+    );
+  } catch {
+    throw new Error('Arquivo de coleção Linx inválido ou inacessível.');
+  }
+}
+
+function collectionPath() {
+  const configured = process.env.LINX_COLLECTION?.trim();
+  if (configured) return resolve(configured);
+  const candidates = [
+    join(process.cwd(), 'secrets', 'MiniSo - Linx.json'),
+    join(process.cwd(), 'MiniSo - Linx.json'),
+  ];
+  return candidates.find((candidate) => existsSync(candidate));
+}
+
 function authFromEnvironment() {
+  const path = collectionPath();
+  const values = path ? collectionValues(path) : {};
+  const source = path ? values : process.env;
   const auth = {
-    endpoint: process.env.LINX_URL || 'https://webapi.microvix.com.br/1.0/api/integracao',
-    user: process.env.LINX_USER,
-    password: process.env.LINX_PASSWORD,
-    key: process.env.LINX_KEY,
-    portal: process.env.LINX_PORTAL || '18376',
+    endpoint: source.LINX_URL || source.url || 'https://webapi.microvix.com.br/1.0/api/integracao',
+    user: source.LINX_USER || source.user,
+    password: source.LINX_PASSWORD || source.password,
+    key: source.LINX_KEY || source.chave,
+    portal: source.LINX_PORTAL || source.portal || '18376',
   };
   const missing = ['user', 'password', 'key', 'portal'].filter((field) => !auth[field]);
   if (missing.length) throw new Error(`Credenciais Linx ausentes: ${missing.join(', ')}.`);
@@ -217,6 +247,18 @@ async function ensureColumns(client, table, rows, columnCache) {
 }
 
 async function insertRows(client, endpoint, company, portal, runId, rows, columnCache) {
+  if (!rows.length) return 0;
+  const uniqueRows = [];
+  const recordKeys = new Set();
+  for (const row of rows) {
+    const timestamp = row.timestamp ? Number(row.timestamp) : null;
+    const hash = recordHash(endpoint.method, company, row);
+    const key = Number.isFinite(timestamp) ? `timestamp:${timestamp}` : `hash:${hash}`;
+    if (recordKeys.has(key)) continue;
+    recordKeys.add(key);
+    uniqueRows.push(row);
+  }
+  rows = uniqueRows;
   if (!rows.length) return 0;
   const mapping = await ensureColumns(client, endpoint.table_name, rows, columnCache);
   const columns = [

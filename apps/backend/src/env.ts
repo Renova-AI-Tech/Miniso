@@ -28,6 +28,7 @@ const schema = z
     DATABASE_URL: z.string().refine((value) => parseDatabaseUrl(value) !== undefined),
     MIGRATION_DATABASE_URL: z.string().optional(),
     LINX_URL: z.url().optional(),
+    LINX_COLLECTION: z.string().min(1).optional(),
     LINX_USER: z.string().min(1).optional(),
     LINX_PASSWORD: z.string().min(1).optional(),
     LINX_KEY: z.string().min(1).optional(),

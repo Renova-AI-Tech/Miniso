@@ -37,11 +37,14 @@ export default defineConfig(({ command }) => {
       strictPort: true,
       proxy: {
         '/api': { target: `http://127.0.0.1:${backendPort}`, changeOrigin: false },
+        '/health': { target: `http://127.0.0.1:${backendPort}`, changeOrigin: false },
+        '/ready': { target: `http://127.0.0.1:${backendPort}`, changeOrigin: false },
       },
+      hmr: { host: origin.hostname, port: Number(origin.port), protocol: 'ws' },
       headers: {
         'X-Content-Type-Options': 'nosniff',
         'Referrer-Policy': 'no-referrer',
-        'Content-Security-Policy': `default-src 'self'; script-src 'self' 'nonce-${developmentNonce}'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' ws://127.0.0.1:*; object-src 'none'; base-uri 'self'; frame-ancestors 'none'`,
+        'Content-Security-Policy': `default-src 'self'; script-src 'self' 'nonce-${developmentNonce}'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' ws://127.0.0.1:*; object-src 'none'; base-uri 'self'; frame-ancestors 'none'`,
       },
     },
     build: { sourcemap: false, assetsInlineLimit: 0 },
