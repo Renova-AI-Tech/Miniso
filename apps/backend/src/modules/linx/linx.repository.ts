@@ -205,35 +205,131 @@ export function createLinxRepository(database: QueryDatabase): LinxRepository {
           rows(
             database,
             sql`
-          SELECT supplier_code, coalesce(supplier_name, 'Sem fornecedor') AS supplier_name,
-                 sum(net_quantity)::float8 AS net_quantity, sum(net_revenue)::float8 AS net_revenue,
-                 sum(cost_value)::float8 AS cost_value, sum(gross_margin)::float8 AS gross_margin
-          FROM analytics.daily_sales_cache d
-          WHERE document_date BETWEEN ${start}::date AND ${end}::date${filter}
-          GROUP BY supplier_code, supplier_name ORDER BY net_revenue DESC
+          WITH sales AS (
+            SELECT supplier_code, coalesce(supplier_name, 'Sem fornecedor') AS supplier_name,
+                   sum(net_quantity)::float8 AS net_quantity, sum(net_revenue)::float8 AS net_revenue,
+                   sum(cost_value)::float8 AS cost_value, sum(gross_margin)::float8 AS gross_margin
+            FROM analytics.daily_sales_cache d
+            WHERE document_date BETWEEN ${start}::date AND ${end}::date${filter}
+            GROUP BY supplier_code, supplier_name
+          ), stock AS (
+            SELECT p.supplier_code, max(p.supplier_name) AS supplier_name,
+                   sum(i.quantity)::float8 AS balance_quantity,
+                   sum(i.quantity * coalesce(i.sale_price, 0))::float8 AS stock_sale_value,
+                   sum(i.total_cost)::float8 AS stock_cost_value
+            FROM analytics.inventory_snapshot i
+            JOIN analytics.product p ON p.portal = i.portal AND p.product_code = i.product_code
+            WHERE i.snapshot_date = (
+              SELECT max(i2.snapshot_date)
+              FROM analytics.inventory_snapshot i2
+              WHERE i2.company_cnpj = i.company_cnpj
+                AND i2.snapshot_date <= ${end}::date
+            )${stockFilter}
+            GROUP BY p.supplier_code
+          )
+          SELECT coalesce(s.supplier_code, k.supplier_code) AS supplier_code,
+                 coalesce(s.supplier_name, k.supplier_name, 'Sem fornecedor') AS supplier_name,
+                 coalesce(s.net_quantity, 0)::float8 AS net_quantity,
+                 coalesce(s.net_revenue, 0)::float8 AS net_revenue,
+                 coalesce(s.cost_value, 0)::float8 AS cost_value,
+                 coalesce(s.gross_margin, 0)::float8 AS gross_margin,
+                 coalesce(k.balance_quantity, 0)::float8 AS balance_quantity,
+                 coalesce(k.stock_sale_value, 0)::float8 AS stock_sale_value,
+                 coalesce(k.stock_cost_value, 0)::float8 AS stock_cost_value
+          FROM sales s
+          FULL OUTER JOIN stock k ON k.supplier_code IS NOT DISTINCT FROM s.supplier_code
+          ORDER BY net_revenue DESC, stock_sale_value DESC
         `,
           ),
           rows(
             database,
             sql`
-          SELECT coalesce(category_name, 'Sem categoria') AS category_name,
-                 max(class_name) AS class_name, max(subclass_name) AS subclass_name,
-                 sum(net_quantity)::float8 AS net_quantity, sum(net_revenue)::float8 AS net_revenue,
-                 sum(cost_value)::float8 AS cost_value, sum(gross_margin)::float8 AS gross_margin
-          FROM analytics.daily_sales_cache d
-          WHERE document_date BETWEEN ${start}::date AND ${end}::date${filter}
-          GROUP BY category_name ORDER BY net_revenue DESC
+          WITH sales AS (
+            SELECT coalesce(category_name, 'Sem categoria') AS category_name,
+                   max(class_name) AS class_name, max(subclass_name) AS subclass_name,
+                   sum(net_quantity)::float8 AS net_quantity, sum(net_revenue)::float8 AS net_revenue,
+                   sum(cost_value)::float8 AS cost_value, sum(gross_margin)::float8 AS gross_margin
+            FROM analytics.daily_sales_cache d
+            WHERE document_date BETWEEN ${start}::date AND ${end}::date${filter}
+            GROUP BY category_name
+          ), stock AS (
+            SELECT coalesce(p.category_name, 'Sem categoria') AS category_name,
+                   max(p.class_name) AS class_name, max(p.subclass_name) AS subclass_name,
+                   sum(i.quantity)::float8 AS balance_quantity,
+                   sum(i.quantity * coalesce(i.sale_price, 0))::float8 AS stock_sale_value,
+                   sum(i.total_cost)::float8 AS stock_cost_value
+            FROM analytics.inventory_snapshot i
+            JOIN analytics.product p ON p.portal = i.portal AND p.product_code = i.product_code
+            WHERE i.snapshot_date = (
+              SELECT max(i2.snapshot_date)
+              FROM analytics.inventory_snapshot i2
+              WHERE i2.company_cnpj = i.company_cnpj
+                AND i2.snapshot_date <= ${end}::date
+            )${stockFilter}
+            GROUP BY p.category_name
+          )
+          SELECT coalesce(s.category_name, k.category_name) AS category_name,
+                 coalesce(s.class_name, k.class_name) AS class_name,
+                 coalesce(s.subclass_name, k.subclass_name) AS subclass_name,
+                 coalesce(s.net_quantity, 0)::float8 AS net_quantity,
+                 coalesce(s.net_revenue, 0)::float8 AS net_revenue,
+                 coalesce(s.cost_value, 0)::float8 AS cost_value,
+                 coalesce(s.gross_margin, 0)::float8 AS gross_margin,
+                 coalesce(k.balance_quantity, 0)::float8 AS balance_quantity,
+                 coalesce(k.stock_sale_value, 0)::float8 AS stock_sale_value,
+                 coalesce(k.stock_cost_value, 0)::float8 AS stock_cost_value
+          FROM sales s
+          FULL OUTER JOIN stock k ON k.category_name IS NOT DISTINCT FROM s.category_name
+          ORDER BY net_revenue DESC, stock_sale_value DESC
         `,
           ),
           rows(
             database,
             sql`
-          SELECT coalesce(origin_name, 'Em branco') AS origin_name,
-                 sum(net_quantity)::float8 AS net_quantity, sum(net_revenue)::float8 AS net_revenue,
-                 sum(cost_value)::float8 AS cost_value, sum(gross_margin)::float8 AS gross_margin
-          FROM analytics.daily_sales_cache d
-          WHERE document_date BETWEEN ${start}::date AND ${end}::date${filter}
-          GROUP BY origin_name ORDER BY net_revenue DESC
+          WITH sales AS (
+            SELECT CASE
+                     WHEN coalesce(p.supplier_name, d.supplier_name, '') ILIKE '%miniso%'
+                       OR coalesce(p.supplier_name, d.supplier_name, '') ILIKE '%prodigy%'
+                     THEN 'Importado (Miniso/Prodigy)'
+                     ELSE 'Nacional'
+                   END AS origin_name,
+                   sum(net_quantity)::float8 AS net_quantity, sum(net_revenue)::float8 AS net_revenue,
+                   sum(cost_value)::float8 AS cost_value, sum(gross_margin)::float8 AS gross_margin
+            FROM analytics.daily_sales_cache d
+            LEFT JOIN analytics.product p ON p.portal = d.portal AND p.product_code = d.product_code
+            WHERE document_date BETWEEN ${start}::date AND ${end}::date${filter}
+            GROUP BY 1
+          ), stock AS (
+            SELECT CASE
+                     WHEN coalesce(p.supplier_name, '') ILIKE '%miniso%'
+                       OR coalesce(p.supplier_name, '') ILIKE '%prodigy%'
+                     THEN 'Importado (Miniso/Prodigy)'
+                     ELSE 'Nacional'
+                   END AS origin_name,
+                   sum(i.quantity)::float8 AS balance_quantity,
+                   sum(i.quantity * coalesce(i.sale_price, 0))::float8 AS stock_sale_value,
+                   sum(i.total_cost)::float8 AS stock_cost_value
+            FROM analytics.inventory_snapshot i
+            JOIN analytics.product p ON p.portal = i.portal AND p.product_code = i.product_code
+            WHERE i.snapshot_date = (
+              SELECT max(i2.snapshot_date)
+              FROM analytics.inventory_snapshot i2
+              WHERE i2.company_cnpj = i.company_cnpj
+                AND i2.snapshot_date <= ${end}::date
+            )${stockFilter}
+            GROUP BY 1
+          )
+          SELECT coalesce(s.origin_name, k.origin_name) AS origin_name,
+                 coalesce(s.net_quantity, 0)::float8 AS net_quantity,
+                 coalesce(s.net_revenue, 0)::float8 AS net_revenue,
+                 coalesce(s.cost_value, 0)::float8 AS cost_value,
+                 coalesce(s.gross_margin, 0)::float8 AS gross_margin,
+                 coalesce(k.balance_quantity, 0)::float8 AS balance_quantity,
+                 coalesce(k.stock_sale_value, 0)::float8 AS stock_sale_value,
+                 coalesce(k.stock_cost_value, 0)::float8 AS stock_cost_value
+          FROM sales s
+          FULL OUTER JOIN stock k ON k.origin_name = s.origin_name
+          ORDER BY net_revenue DESC, stock_sale_value DESC
         `,
           ),
           rows(
@@ -246,7 +342,12 @@ export function createLinxRepository(database: QueryDatabase): LinxRepository {
                  count(DISTINCT i.product_code)::int AS products_in_stock
           FROM analytics.inventory_snapshot i
           LEFT JOIN analytics.store s ON s.portal = i.portal AND s.company_cnpj = i.company_cnpj
-          WHERE i.snapshot_date = (SELECT max(snapshot_date) FROM analytics.inventory_snapshot WHERE snapshot_date <= ${end}::date)${stockFilter}
+          WHERE i.snapshot_date = (
+            SELECT max(i2.snapshot_date)
+            FROM analytics.inventory_snapshot i2
+            WHERE i2.company_cnpj = i.company_cnpj
+              AND i2.snapshot_date <= ${end}::date
+          )${stockFilter}
           GROUP BY i.company_cnpj ORDER BY stock_sale_value DESC
         `,
           ),
@@ -264,12 +365,7 @@ export function createLinxRepository(database: QueryDatabase): LinxRepository {
 
     async listProducts({ search = '', asOf, companies, page, pageSize }) {
       const offset = (page - 1) * pageSize;
-      const companyClause = companies.length
-        ? sql` AND i.company_cnpj IN (${sql.join(
-            companies.map((value) => sql`${value}`),
-            sql`, `,
-          )})`
-        : sql``;
+      const filter = companyFilter('i', companies);
       const searchClause = search
         ? sql` AND (p.name ILIKE ${`%${search}%`} OR p.reference ILIKE ${`%${search}%`} OR p.barcode ILIKE ${`%${search}%`})`
         : sql``;
@@ -283,23 +379,35 @@ export function createLinxRepository(database: QueryDatabase): LinxRepository {
                  i.company_cnpj, s.trade_name AS store_name, i.snapshot_date,
                  i.quantity AS balance_quantity, i.total_cost AS stock_cost_value,
                  i.cost_price, i.sale_price, i.location, p.disabled
-          FROM analytics.product p
-          LEFT JOIN LATERAL (
-            SELECT * FROM analytics.inventory_snapshot i0
-            WHERE i0.portal = p.portal AND i0.product_code = p.product_code
-              AND i0.snapshot_date <= ${asOf}::date${companyClause}
-            ORDER BY i0.snapshot_date DESC LIMIT 1
-          ) i ON true
+          FROM analytics.inventory_snapshot i
+          JOIN analytics.product p ON p.portal = i.portal AND p.product_code = i.product_code
           LEFT JOIN analytics.store s ON s.portal = i.portal AND s.company_cnpj = i.company_cnpj
-          WHERE true${searchClause}
-          ORDER BY p.name NULLS LAST, p.product_code
+          WHERE i.snapshot_date = (
+            SELECT max(i2.snapshot_date)
+            FROM analytics.inventory_snapshot i2
+            WHERE i2.portal = i.portal
+              AND i2.company_cnpj = i.company_cnpj
+              AND i2.product_code = i.product_code
+              AND i2.snapshot_date <= ${asOf}::date
+          )${filter}${searchClause}
+          ORDER BY i.company_cnpj, p.name NULLS LAST, p.product_code
           LIMIT ${pageSize} OFFSET ${offset}
         `,
         ),
         one<{ total: number }>(
           database,
           sql`
-          SELECT count(*)::int AS total FROM analytics.product p WHERE true${searchClause}
+          SELECT count(*)::int AS total
+          FROM analytics.inventory_snapshot i
+          JOIN analytics.product p ON p.portal = i.portal AND p.product_code = i.product_code
+          WHERE i.snapshot_date = (
+            SELECT max(i2.snapshot_date)
+            FROM analytics.inventory_snapshot i2
+            WHERE i2.portal = i.portal
+              AND i2.company_cnpj = i.company_cnpj
+              AND i2.product_code = i.product_code
+              AND i2.snapshot_date <= ${asOf}::date
+          )${filter}${searchClause}
         `,
         ),
       ]);
@@ -327,7 +435,12 @@ export function createLinxRepository(database: QueryDatabase): LinxRepository {
           FROM analytics.inventory_snapshot i
           JOIN analytics.product p ON p.portal = i.portal AND p.product_code = i.product_code
           LEFT JOIN analytics.store s ON s.portal = i.portal AND s.company_cnpj = i.company_cnpj
-          WHERE i.snapshot_date = (SELECT max(snapshot_date) FROM analytics.inventory_snapshot WHERE snapshot_date <= ${asOf}::date)${filter}
+          WHERE i.snapshot_date = (
+            SELECT max(i2.snapshot_date)
+            FROM analytics.inventory_snapshot i2
+            WHERE i2.company_cnpj = i.company_cnpj
+              AND i2.snapshot_date <= ${asOf}::date
+          )${filter}
           ORDER BY i.company_cnpj, p.name NULLS LAST, i.product_code
           LIMIT ${pageSize} OFFSET ${offset}
         `,
@@ -336,7 +449,12 @@ export function createLinxRepository(database: QueryDatabase): LinxRepository {
           database,
           sql`
           SELECT count(*)::int AS total FROM analytics.inventory_snapshot i
-          WHERE i.snapshot_date = (SELECT max(snapshot_date) FROM analytics.inventory_snapshot WHERE snapshot_date <= ${asOf}::date)${filter}
+          WHERE i.snapshot_date = (
+            SELECT max(i2.snapshot_date)
+            FROM analytics.inventory_snapshot i2
+            WHERE i2.company_cnpj = i.company_cnpj
+              AND i2.snapshot_date <= ${asOf}::date
+          )${filter}
         `,
         ),
       ]);
@@ -382,18 +500,137 @@ export function createLinxRepository(database: QueryDatabase): LinxRepository {
 
     async getAnalyses(start, end, companies) {
       const filter = companyFilter('d', companies);
+      const stockFilter = companyFilter('i', companies);
       const [suppliers, categories, origins, velocity, turnover, storeDaily] = await Promise.all([
         rows(
           database,
-          sql`SELECT supplier_code, supplier_name, sum(net_quantity)::float8 AS net_quantity, sum(net_revenue)::float8 AS net_revenue, sum(cost_value)::float8 AS cost_value, sum(gross_margin)::float8 AS gross_margin FROM analytics.daily_sales_cache d WHERE document_date BETWEEN ${start}::date AND ${end}::date${filter} GROUP BY supplier_code, supplier_name ORDER BY net_revenue DESC`,
+          sql`
+          WITH sales AS (
+            SELECT supplier_code, coalesce(supplier_name, 'Sem fornecedor') AS supplier_name,
+                   sum(net_quantity)::float8 AS net_quantity, sum(net_revenue)::float8 AS net_revenue,
+                   sum(cost_value)::float8 AS cost_value, sum(gross_margin)::float8 AS gross_margin
+            FROM analytics.daily_sales_cache d
+            WHERE document_date BETWEEN ${start}::date AND ${end}::date${filter}
+            GROUP BY supplier_code, supplier_name
+          ), stock AS (
+            SELECT p.supplier_code, max(p.supplier_name) AS supplier_name,
+                   sum(i.quantity)::float8 AS balance_quantity,
+                   sum(i.quantity * coalesce(i.sale_price, 0))::float8 AS stock_sale_value,
+                   sum(i.total_cost)::float8 AS stock_cost_value
+            FROM analytics.inventory_snapshot i
+            JOIN analytics.product p ON p.portal = i.portal AND p.product_code = i.product_code
+            WHERE i.snapshot_date = (
+              SELECT max(i2.snapshot_date)
+              FROM analytics.inventory_snapshot i2
+              WHERE i2.company_cnpj = i.company_cnpj
+                AND i2.snapshot_date <= ${end}::date
+            )${stockFilter}
+            GROUP BY p.supplier_code
+          )
+          SELECT coalesce(s.supplier_code, k.supplier_code) AS supplier_code,
+                 coalesce(s.supplier_name, k.supplier_name, 'Sem fornecedor') AS supplier_name,
+                 coalesce(s.net_quantity, 0)::float8 AS net_quantity,
+                 coalesce(s.net_revenue, 0)::float8 AS net_revenue,
+                 coalesce(s.cost_value, 0)::float8 AS cost_value,
+                 coalesce(s.gross_margin, 0)::float8 AS gross_margin,
+                 coalesce(k.balance_quantity, 0)::float8 AS balance_quantity,
+                 coalesce(k.stock_sale_value, 0)::float8 AS stock_sale_value,
+                 coalesce(k.stock_cost_value, 0)::float8 AS stock_cost_value
+          FROM sales s
+          FULL OUTER JOIN stock k ON k.supplier_code IS NOT DISTINCT FROM s.supplier_code
+          ORDER BY net_revenue DESC, stock_sale_value DESC
+        `,
         ),
         rows(
           database,
-          sql`SELECT category_name, max(class_name) AS class_name, max(subclass_name) AS subclass_name, sum(net_quantity)::float8 AS net_quantity, sum(net_revenue)::float8 AS net_revenue, sum(cost_value)::float8 AS cost_value, sum(gross_margin)::float8 AS gross_margin FROM analytics.daily_sales_cache d WHERE document_date BETWEEN ${start}::date AND ${end}::date${filter} GROUP BY category_name ORDER BY net_revenue DESC`,
+          sql`
+          WITH sales AS (
+            SELECT coalesce(category_name, 'Sem categoria') AS category_name,
+                   max(class_name) AS class_name, max(subclass_name) AS subclass_name,
+                   sum(net_quantity)::float8 AS net_quantity, sum(net_revenue)::float8 AS net_revenue,
+                   sum(cost_value)::float8 AS cost_value, sum(gross_margin)::float8 AS gross_margin
+            FROM analytics.daily_sales_cache d
+            WHERE document_date BETWEEN ${start}::date AND ${end}::date${filter}
+            GROUP BY category_name
+          ), stock AS (
+            SELECT coalesce(p.category_name, 'Sem categoria') AS category_name,
+                   max(p.class_name) AS class_name, max(p.subclass_name) AS subclass_name,
+                   sum(i.quantity)::float8 AS balance_quantity,
+                   sum(i.quantity * coalesce(i.sale_price, 0))::float8 AS stock_sale_value,
+                   sum(i.total_cost)::float8 AS stock_cost_value
+            FROM analytics.inventory_snapshot i
+            JOIN analytics.product p ON p.portal = i.portal AND p.product_code = i.product_code
+            WHERE i.snapshot_date = (
+              SELECT max(i2.snapshot_date)
+              FROM analytics.inventory_snapshot i2
+              WHERE i2.company_cnpj = i.company_cnpj
+                AND i2.snapshot_date <= ${end}::date
+            )${stockFilter}
+            GROUP BY p.category_name
+          )
+          SELECT coalesce(s.category_name, k.category_name) AS category_name,
+                 coalesce(s.class_name, k.class_name) AS class_name,
+                 coalesce(s.subclass_name, k.subclass_name) AS subclass_name,
+                 coalesce(s.net_quantity, 0)::float8 AS net_quantity,
+                 coalesce(s.net_revenue, 0)::float8 AS net_revenue,
+                 coalesce(s.cost_value, 0)::float8 AS cost_value,
+                 coalesce(s.gross_margin, 0)::float8 AS gross_margin,
+                 coalesce(k.balance_quantity, 0)::float8 AS balance_quantity,
+                 coalesce(k.stock_sale_value, 0)::float8 AS stock_sale_value,
+                 coalesce(k.stock_cost_value, 0)::float8 AS stock_cost_value
+          FROM sales s
+          FULL OUTER JOIN stock k ON k.category_name IS NOT DISTINCT FROM s.category_name
+          ORDER BY net_revenue DESC, stock_sale_value DESC
+        `,
         ),
         rows(
           database,
-          sql`SELECT origin_name, sum(net_quantity)::float8 AS net_quantity, sum(net_revenue)::float8 AS net_revenue, sum(cost_value)::float8 AS cost_value, sum(gross_margin)::float8 AS gross_margin FROM analytics.daily_sales_cache d WHERE document_date BETWEEN ${start}::date AND ${end}::date${filter} GROUP BY origin_name ORDER BY net_revenue DESC`,
+          sql`
+          WITH sales AS (
+            SELECT CASE
+                     WHEN coalesce(p.supplier_name, d.supplier_name, '') ILIKE '%miniso%'
+                       OR coalesce(p.supplier_name, d.supplier_name, '') ILIKE '%prodigy%'
+                     THEN 'Importado (Miniso/Prodigy)'
+                     ELSE 'Nacional'
+                   END AS origin_name,
+                   sum(net_quantity)::float8 AS net_quantity, sum(net_revenue)::float8 AS net_revenue,
+                   sum(cost_value)::float8 AS cost_value, sum(gross_margin)::float8 AS gross_margin
+            FROM analytics.daily_sales_cache d
+            LEFT JOIN analytics.product p ON p.portal = d.portal AND p.product_code = d.product_code
+            WHERE document_date BETWEEN ${start}::date AND ${end}::date${filter}
+            GROUP BY 1
+          ), stock AS (
+            SELECT CASE
+                     WHEN coalesce(p.supplier_name, '') ILIKE '%miniso%'
+                       OR coalesce(p.supplier_name, '') ILIKE '%prodigy%'
+                     THEN 'Importado (Miniso/Prodigy)'
+                     ELSE 'Nacional'
+                   END AS origin_name,
+                   sum(i.quantity)::float8 AS balance_quantity,
+                   sum(i.quantity * coalesce(i.sale_price, 0))::float8 AS stock_sale_value,
+                   sum(i.total_cost)::float8 AS stock_cost_value
+            FROM analytics.inventory_snapshot i
+            JOIN analytics.product p ON p.portal = i.portal AND p.product_code = i.product_code
+            WHERE i.snapshot_date = (
+              SELECT max(i2.snapshot_date)
+              FROM analytics.inventory_snapshot i2
+              WHERE i2.company_cnpj = i.company_cnpj
+                AND i2.snapshot_date <= ${end}::date
+            )${stockFilter}
+            GROUP BY 1
+          )
+          SELECT coalesce(s.origin_name, k.origin_name) AS origin_name,
+                 coalesce(s.net_quantity, 0)::float8 AS net_quantity,
+                 coalesce(s.net_revenue, 0)::float8 AS net_revenue,
+                 coalesce(s.cost_value, 0)::float8 AS cost_value,
+                 coalesce(s.gross_margin, 0)::float8 AS gross_margin,
+                 coalesce(k.balance_quantity, 0)::float8 AS balance_quantity,
+                 coalesce(k.stock_sale_value, 0)::float8 AS stock_sale_value,
+                 coalesce(k.stock_cost_value, 0)::float8 AS stock_cost_value
+          FROM sales s
+          FULL OUTER JOIN stock k ON k.origin_name = s.origin_name
+          ORDER BY net_revenue DESC, stock_sale_value DESC
+        `,
         ),
         rows(
           database,
@@ -401,7 +638,8 @@ export function createLinxRepository(database: QueryDatabase): LinxRepository {
           WITH sales AS (
             SELECT product_code, max(product_name) AS product_name, max(supplier_name) AS supplier_name, max(category_name) AS category_name,
                    sum(net_quantity)::float8 AS net_quantity, sum(net_revenue)::float8 AS net_revenue,
-                   min(document_date) AS first_sale_date, count(DISTINCT document_date)::int AS active_days
+                   min(document_date) AS first_sale_date,
+                   (${end}::date - min(document_date) + 1)::int AS active_days
             FROM analytics.daily_sales_cache d WHERE document_date BETWEEN ${start}::date AND ${end}::date${filter}
             GROUP BY product_code
           ), stock AS (
@@ -429,19 +667,46 @@ export function createLinxRepository(database: QueryDatabase): LinxRepository {
         rows(
           database,
           sql`
-          SELECT d.document_date, d.company_cnpj, max(d.store_name) AS store_name,
-                 sum(d.net_quantity)::float8 AS net_quantity, sum(d.net_revenue)::float8 AS net_revenue,
-                 sum(d.cost_value)::float8 AS cost_value,
-                 coalesce(sum(i.quantity), 0)::float8 AS stock_quantity,
-                 coalesce(sum(i.quantity * coalesce(i.sale_price, 0)), 0)::float8 AS stock_sale_value,
-                 coalesce(sum(i.total_cost), 0)::float8 AS stock_cost_value,
-                 CASE WHEN (${end}::date - ${start}::date + 1) > 0 THEN sum(d.net_quantity) / (${end}::date - ${start}::date + 1) ELSE 0 END AS sales_velocity,
-                 CASE WHEN sum(i.quantity) > 0 THEN sum(d.net_quantity) / sum(i.quantity) ELSE NULL END AS turnover,
-                 CASE WHEN sum(d.net_quantity) > 0 THEN sum(i.quantity) / (sum(d.net_quantity) / (${end}::date - ${start}::date + 1)) ELSE NULL END AS coverage_days
-          FROM analytics.daily_sales_cache d
-          LEFT JOIN analytics.inventory_snapshot i ON i.company_cnpj = d.company_cnpj AND i.product_code = d.product_code AND i.snapshot_date = d.document_date
-          WHERE d.document_date BETWEEN ${start}::date AND ${end}::date${filter}
-          GROUP BY d.document_date, d.company_cnpj ORDER BY d.document_date, net_revenue DESC
+          WITH sales AS (
+            SELECT d.document_date, d.company_cnpj, max(d.store_name) AS store_name,
+                   sum(d.net_quantity)::float8 AS net_quantity, sum(d.net_revenue)::float8 AS net_revenue,
+                   sum(d.cost_value)::float8 AS cost_value
+            FROM analytics.daily_sales_cache d
+            WHERE d.document_date BETWEEN ${start}::date AND ${end}::date${filter}
+            GROUP BY d.document_date, d.company_cnpj
+          ), stock AS (
+            SELECT days.document_date, days.company_cnpj,
+                   coalesce(sum(latest.quantity), 0)::float8 AS stock_quantity,
+                   coalesce(sum(latest.quantity * coalesce(latest.sale_price, 0)), 0)::float8 AS stock_sale_value,
+                   coalesce(sum(latest.total_cost), 0)::float8 AS stock_cost_value
+            FROM (SELECT DISTINCT d.document_date, d.company_cnpj
+                  FROM analytics.daily_sales_cache d
+                  WHERE d.document_date BETWEEN ${start}::date AND ${end}::date${filter}) days
+            LEFT JOIN LATERAL (
+              SELECT DISTINCT ON (i.product_code)
+                     i.product_code, i.quantity, i.sale_price, i.total_cost
+              FROM analytics.inventory_snapshot i
+              WHERE i.company_cnpj = days.company_cnpj
+                AND i.snapshot_date <= days.document_date
+              ORDER BY i.product_code, i.snapshot_date DESC
+            ) latest ON true
+            GROUP BY days.document_date, days.company_cnpj
+          )
+          SELECT sales.document_date, sales.company_cnpj, sales.store_name,
+                 sales.net_quantity, sales.net_revenue, sales.cost_value,
+                 coalesce(stock.stock_quantity, 0)::float8 AS stock_quantity,
+                 coalesce(stock.stock_sale_value, 0)::float8 AS stock_sale_value,
+                 coalesce(stock.stock_cost_value, 0)::float8 AS stock_cost_value,
+                 sales.net_quantity AS sales_velocity,
+                 CASE WHEN coalesce(stock.stock_quantity, 0) > 0
+                      THEN sales.net_quantity / stock.stock_quantity
+                      ELSE NULL END AS turnover,
+                 CASE WHEN sales.net_quantity > 0
+                      THEN coalesce(stock.stock_quantity, 0) / sales.net_quantity
+                      ELSE NULL END AS coverage_days
+          FROM sales
+          LEFT JOIN stock USING (document_date, company_cnpj)
+          ORDER BY sales.document_date, sales.net_revenue DESC
         `,
         ),
       ]);

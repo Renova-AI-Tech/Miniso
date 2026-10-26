@@ -78,7 +78,7 @@ async function saveWorkbook(sheets: WorkbookSheets, filename: string) {
     };
     const currencyHeaders = /faturamento|custo|preço|estoque|valor|margem/i;
     const integerHeaders =
-      /quantidade|saldo|vendas|código|produtos|lojas|linhas|snapshots|dias ativos/i;
+      /quantidade|saldo|vendas|código|produtos|lojas|linhas|snapshots|dias ativos|dias desde/i;
     const decimalHeaders = /giro|velocidade|unidades por dia|cobertura/i;
     const dateHeaders = /data|período/i;
     headers.forEach((header, columnIndex) => {
@@ -331,14 +331,14 @@ function InventoryScreen({
         <Card className="kpi-card">
           <div className="kpi-label">Valor a venda</div>
           <strong>{money.format(totalSale)}</strong>
-          <small>saldo × preço de venda</small>
+          <small>saldo × preço de tabela</small>
         </Card>
       </section>
       <Card className="card table-card detail-screen-card">
         <div className="card-header">
           <div>
             <p className="eyebrow">ESTOQUE POR PRODUTO E LOJA</p>
-            <h2>Saldo, custo, venda e fornecedor</h2>
+            <h2>Saldo, custo, preço de tabela e fornecedor</h2>
           </div>
           <Input
             className="search"
@@ -355,7 +355,7 @@ function InventoryScreen({
                 <th>Loja</th>
                 <th>Saldo</th>
                 <th>Custo unit.</th>
-                <th>Preço venda</th>
+                <th>Preço tabela</th>
                 <th>Valor custo</th>
                 <th>Fornecedor</th>
                 <th>Categoria</th>
@@ -471,7 +471,7 @@ function ProductsScreen({
               <th>Categoria · classe · subclasse</th>
               <th>Origem</th>
               <th>Custo</th>
-              <th>Venda</th>
+              <th>Preço tabela</th>
               <th>Saldo</th>
             </tr>
           </thead>
@@ -1271,9 +1271,9 @@ function App() {
             Observação: `${exportInventory.length.toLocaleString('pt-BR')} linhas produto · loja`,
           },
           {
-            Indicador: 'Estoque a preço de venda',
+            Indicador: 'Estoque a preço de tabela',
             Valor: stockSaleForExport,
-            Observação: 'Saldo × preço de venda',
+            Observação: 'Saldo × preço de tabela',
           },
           {
             Indicador: 'Estoque a custo',
@@ -1328,7 +1328,7 @@ function App() {
           Código: row.product_code,
           Fornecedor: row.supplier_name || '',
           Vendas: Number(row.net_quantity || 0),
-          'Dias ativos': Number(row.active_days || 0),
+          'Dias desde a primeira venda': Number(row.active_days || 0),
           'Unidades por dia': Number(row.sales_velocity || 0),
           'Estoque tabela': Number(row.stock_sale_value || 0),
         }));
@@ -1363,7 +1363,7 @@ function App() {
           Localização: row.location || '',
           Saldo: Number(row.quantity || 0),
           'Preço de custo': Number(row.cost_price || row.average_cost || 0),
-          'Preço de venda': Number(row.sale_price || 0),
+          'Preço de tabela': Number(row.sale_price || 0),
           'Valor a custo': Number(row.total_cost || 0),
           Fornecedor: row.supplier_name || '',
           Categoria: row.category_name || '',
@@ -1404,7 +1404,7 @@ function App() {
           Unidade: row.unit || '',
           'Descrição básica': row.basic_description || '',
           Custo: row.cost_price == null ? '' : Number(row.cost_price),
-          Venda: row.sale_price == null ? '' : Number(row.sale_price),
+          'Preço tabela': row.sale_price == null ? '' : Number(row.sale_price),
           Saldo: row.balance_quantity == null ? '' : Number(row.balance_quantity),
           'Data do snapshot': row.snapshot_date || '',
           Ativo:
@@ -1717,10 +1717,10 @@ function App() {
             </Card>
             <Card className="kpi-card">
               <div className="kpi-label">
-                Saldo em estoque <span className="kpi-icon purple">▦</span>
+                Estoque a preço de tabela <span className="kpi-icon purple">▦</span>
               </div>
-              <strong>{number.format(stockQuantity)}</strong>
-              <small>{money.format(stockSaleTotal)} a preço de venda</small>
+              <strong>{money.format(stockSaleTotal)}</strong>
+              <small>{number.format(stockQuantity)} unidades · saldo × preço de tabela</small>
             </Card>
           </section>
         )}
@@ -2071,7 +2071,7 @@ function App() {
                       <th>Produto</th>
                       <th>Fornecedor</th>
                       <th>Vendas</th>
-                      <th>Dias ativos</th>
+                      <th>Dias desde a primeira venda</th>
                       <th>Velocidade</th>
                       <th>Estoque tabela</th>
                     </tr>
@@ -2252,7 +2252,7 @@ function App() {
               </div>
               <div className="stock-total">
                 {moneyPrecise.format(stockSaleTotal)}
-                <small>preço de venda · custo {moneyPrecise.format(stockCostTotal)}</small>
+                <small>preço de tabela · custo {moneyPrecise.format(stockCostTotal)}</small>
               </div>
               <div className="stock-list">
                 {inventory.slice(0, 5).map((item) => (
