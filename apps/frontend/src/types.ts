@@ -15,6 +15,7 @@ export type Summary = {
   stores: number;
   products: number;
   last_date: string | null;
+  source?: 'powerbi_monthly' | 'linx_movements';
 };
 
 export type DailySale = {

@@ -31,6 +31,14 @@ import type {
 } from '../types';
 
 const isoToday = () => new Date().toISOString().slice(0, 10);
+
+function latestCommonDate(health: HealthPayload | null) {
+  const dates = [
+    health?.data_quality?.last_movement_date,
+    health?.data_quality?.last_stock_date,
+  ].filter((value): value is string => Boolean(value));
+  return dates.sort()[0] || isoToday();
+}
 const subtractDays = (iso: string, amount: number) => {
   const date = new Date(`${iso}T00:00:00`);
   date.setDate(date.getDate() - amount);
@@ -874,6 +882,7 @@ function App() {
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [syncHistory, setSyncHistory] = useState<SyncHistoryPayload | null>(null);
   const [syncAudit, setSyncAudit] = useState<SyncAuditPayload | null>(null);
+  const availableThrough = latestCommonDate(health);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -973,11 +982,11 @@ function App() {
       .then(([storeResponse, health]) => {
         setStores(storeResponse.data);
         setHealth(health);
-        const lastMovement = health.data_quality?.last_movement_date || isoToday();
-        setEnd(lastMovement);
-        setStart(subtractDays(lastMovement, 13));
-        setDraftEnd(lastMovement);
-        setDraftStart(subtractDays(lastMovement, 13));
+        const lastCommonDate = latestCommonDate(health);
+        setEnd(lastCommonDate);
+        setStart(subtractDays(lastCommonDate, 13));
+        setDraftEnd(lastCommonDate);
+        setDraftStart(subtractDays(lastCommonDate, 13));
         setReady(true);
       })
       .catch(() => {
@@ -1013,14 +1022,28 @@ function App() {
         .then((status) => {
           setSync(status);
           if (!status.running) {
+            getHealth()
+              .then((nextHealth) => {
+                setHealth(nextHealth);
+                const nextThrough = latestCommonDate(nextHealth);
+                // When the user was looking at the latest available period,
+                // move that period forward after a successful sync so the new
+                // day appears immediately. Explicit historical ranges remain
+                // untouched.
+                if (end === availableThrough || end > nextThrough) {
+                  const nextStart = subtractDays(nextThrough, 13);
+                  setStart(nextStart);
+                  setEnd(nextThrough);
+                  setDraftStart(nextStart);
+                  setDraftEnd(nextThrough);
+                }
+              })
+              .catch(() => undefined);
             setMessage(
               status.exit_code === 0
                 ? 'Atualização concluída. Indicadores recarregados.'
                 : 'A atualização terminou com falhas; consulte o log da API.',
             );
-            getHealth()
-              .then(setHealth)
-              .catch(() => undefined);
             getSyncHistory(1, 25)
               .then(setSyncHistory)
               .catch(() => undefined);
@@ -1033,7 +1056,7 @@ function App() {
         .catch(() => undefined);
     }, 5000);
     return () => window.clearInterval(timer);
-  }, [loadData, sync.running]);
+  }, [availableThrough, end, loadData, sync.running]);
 
   const dailySeries = useMemo(() => (dashboard?.daily || []).slice(-14), [dashboard]);
   const topStores = useMemo(() => (dashboard?.stores || []).slice(0, 5), [dashboard]);
@@ -1095,7 +1118,9 @@ function App() {
     try {
       // A manual refresh only needs to re-read the latest day.  The scheduled
       // job reviews a wider window to catch late corrections from Linx.
-      const status = await startSync(1, 'dashboard');
+      // Recollect today and yesterday so late Linx postings are corrected
+      // without requiring a full historical reload.
+      const status = await startSync(2, 'dashboard');
       setSync(status);
       setMessage(
         status.running
@@ -1469,8 +1494,17 @@ function App() {
   }
 
   function applyFilters() {
-    setStart(draftStart);
-    setEnd(draftEnd);
+    if (!draftStart || !draftEnd || draftStart > draftEnd) {
+      setError('O início do período deve ser anterior ou igual ao fim.');
+      return;
+    }
+    const safeEnd = draftEnd > availableThrough ? availableThrough : draftEnd;
+    const safeStart = draftStart > safeEnd ? safeEnd : draftStart;
+    if (safeEnd !== draftEnd) {
+      setMessage(`Período ajustado até ${safeEnd}, última data com vendas e estoque disponíveis.`);
+    }
+    setStart(safeStart);
+    setEnd(safeEnd);
     setCompanies(draftCompanies);
     setProductSearch(draftProductSearch);
     setProductPage(1);
@@ -1584,7 +1618,10 @@ function App() {
             <span className="filter-icon">◷</span>
             <div>
               <strong>Período de análise</strong>
-              <small>Escolha o intervalo e uma ou mais lojas para atualizar os indicadores.</small>
+              <small>
+                Escolha o intervalo e uma ou mais lojas para atualizar os indicadores. Dados
+                combinados disponíveis até {availableThrough}.
+              </small>
               <div className="period-shortcuts">
                 <span>Atalhos</span>
                 {[7, 14, 30].map((days) => (
@@ -1610,6 +1647,7 @@ function App() {
             De
             <Input
               type="date"
+              max={availableThrough}
               value={draftStart}
               onChange={(event) => setDraftStart(event.target.value)}
             />
@@ -1618,6 +1656,7 @@ function App() {
             Até
             <Input
               type="date"
+              max={availableThrough}
               value={draftEnd}
               onChange={(event) => setDraftEnd(event.target.value)}
             />

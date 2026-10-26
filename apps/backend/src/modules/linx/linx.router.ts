@@ -13,6 +13,10 @@ const syncInput = z
   .strict();
 
 export const linxRouter = router({
+  health: publicProcedure.query(async ({ ctx }) => {
+    if (!ctx.linx) throw new TRPCError({ code: 'SERVICE_UNAVAILABLE' });
+    return await ctx.linx.getHealth();
+  }),
   sync: publicProcedure.input(syncInput).mutation(async ({ ctx, input }) => {
     if (!ctx.sync) throw new TRPCError({ code: 'SERVICE_UNAVAILABLE' });
     try {
@@ -30,10 +34,12 @@ export const linxRouter = router({
   }),
   summary: publicProcedure.input(period).query(async ({ ctx, input }) => {
     if (!ctx.linx) throw new TRPCError({ code: 'SERVICE_UNAVAILABLE' });
+    const data = await ctx.linx.getSummary(input.start, input.end, input.companies);
     return {
       start: input.start,
       end: input.end,
-      data: await ctx.linx.getSummary(input.start, input.end, input.companies),
+      source: data.source,
+      data,
     };
   }),
   dashboard: publicProcedure.input(period).query(async ({ ctx, input }) => {
@@ -105,6 +111,7 @@ export const linxRouter = router({
         .object({
           page: z.number().int().min(1).default(1),
           pageSize: z.number().int().min(1).max(200).default(25),
+          method: z.string().max(120).optional(),
           status: z.string().optional(),
         })
         .strict(),
@@ -120,6 +127,8 @@ export const linxRouter = router({
           page: z.number().int().min(1).default(1),
           pageSize: z.number().int().min(1).max(200).default(50),
           runId: z.number().int().positive().optional(),
+          tableName: z.string().max(160).optional(),
+          changeType: z.string().max(40).optional(),
         })
         .strict(),
     )

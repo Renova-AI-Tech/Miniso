@@ -408,7 +408,14 @@ export async function runCollection({
   const client = new Client({ connectionString: databaseUrl, connectionTimeoutMillis: 5000 });
   const columnCache = new Map();
   await client.connect();
+  let lockAcquired = false;
   try {
+    const lock = await client.query(
+      "SELECT pg_try_advisory_lock(hashtext('renova-miniso-linx-sync')) AS acquired",
+    );
+    lockAcquired = Boolean(lock.rows[0]?.acquired);
+    if (!lockAcquired)
+      throw new Error('Outra coleta Linx já está em execução; esta execução foi ignorada.');
     await client.query('BEGIN');
     const endpoints = await endpointRows(client);
     const selectedNames = new Set(profile === 'full' ? fullMethods : dashboardMethods);
@@ -440,6 +447,11 @@ export async function runCollection({
     }
     return { start, end, companies: companies.length, results };
   } finally {
+    if (lockAcquired) {
+      await client
+        .query("SELECT pg_advisory_unlock(hashtext('renova-miniso-linx-sync'))")
+        .catch(() => undefined);
+    }
     await client.end();
   }
 }

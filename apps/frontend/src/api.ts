@@ -23,10 +23,7 @@ export async function getStores() {
 }
 
 export async function getHealth() {
-  const response = await fetch('/health', { headers: { Accept: 'application/json' } });
-  const payload = (await response.json()) as HealthPayload;
-  if (!response.ok) throw new Error('Banco indisponível.');
-  return payload;
+  return client.linx.health.query() as unknown as Promise<HealthPayload>;
 }
 
 export async function getSummary(start: string, end: string, company?: CompanyFilter) {
@@ -34,7 +31,12 @@ export async function getSummary(start: string, end: string, company?: CompanyFi
     start,
     end,
     companies: companies(company),
-  }) as unknown as Promise<{ data: Summary }>;
+  }) as unknown as Promise<{
+    start: string;
+    end: string;
+    source?: 'powerbi_monthly' | 'linx_movements';
+    data: Summary;
+  }>;
 }
 
 export async function getDashboard(start: string, end: string, company?: CompanyFilter) {
@@ -122,19 +124,28 @@ export async function getSyncStatus() {
   return client.linx.syncStatus.query() as unknown as Promise<SyncStatus>;
 }
 
-export async function getSyncHistory(page = 1, pageSize = 25, status?: string) {
+export async function getSyncHistory(page = 1, pageSize = 25, status?: string, method?: string) {
   return client.linx.syncHistory.query({
     page,
     pageSize,
+    method,
     status,
   }) as unknown as Promise<SyncHistoryPayload>;
 }
 
-export async function getSyncAudit(page = 1, pageSize = 50, runId?: number) {
+export async function getSyncAudit(
+  page = 1,
+  pageSize = 50,
+  runId?: number,
+  tableName?: string,
+  changeType?: string,
+) {
   return client.linx.syncAudit.query({
     page,
     pageSize,
     runId,
+    tableName,
+    changeType,
   }) as unknown as Promise<SyncAuditPayload>;
 }
 

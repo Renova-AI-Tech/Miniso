@@ -20,12 +20,7 @@ WHERE length(regexp_replace(coalesce(_payload->>'CNPJ', ''), '[^0-9]', '', 'g'))
 ORDER BY _portal,
          regexp_replace(coalesce(_payload->>'CNPJ', ''), '[^0-9]', '', 'g'),
          _linx_timestamp DESC NULLS LAST, _collected_at DESC, _id DESC
-ON CONFLICT (portal, company_cnpj) DO UPDATE SET
-    company_code = coalesce(EXCLUDED.company_code, analytics.store.company_code),
-    legal_name = coalesce(EXCLUDED.legal_name, analytics.store.legal_name),
-    trade_name = coalesce(EXCLUDED.trade_name, analytics.store.trade_name),
-    raw_payload = EXCLUDED.raw_payload,
-    updated_at = now();
+ON CONFLICT (portal, company_cnpj) DO NOTHING;
 
 INSERT INTO analytics.store
     (portal, company_cnpj, company_code, legal_name, trade_name, active, raw_payload, updated_at)
@@ -45,12 +40,7 @@ WHERE length(regexp_replace(coalesce(_payload->>'cnpj_emp', ''), '[^0-9]', '', '
 ORDER BY NULLIF(_payload->>'portal', '')::numeric::integer,
          regexp_replace(coalesce(_payload->>'cnpj_emp', ''), '[^0-9]', '', 'g'),
          _linx_timestamp DESC NULLS LAST, _collected_at DESC, _id DESC
-ON CONFLICT (portal, company_cnpj) DO UPDATE SET
-    company_code = coalesce(EXCLUDED.company_code, analytics.store.company_code),
-    legal_name = coalesce(EXCLUDED.legal_name, analytics.store.legal_name),
-    trade_name = coalesce(EXCLUDED.trade_name, analytics.store.trade_name),
-    raw_payload = EXCLUDED.raw_payload,
-    updated_at = now();
+ON CONFLICT (portal, company_cnpj) DO NOTHING;
 
 INSERT INTO analytics.supplier
     (portal, supplier_code, document, name, legal_name, active, raw_payload, updated_at)

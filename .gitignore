@@ -17,6 +17,7 @@ blob-report
 .turbo
 uploads
 outputs
+logs
 agent-tools
 *.tsbuildinfo
 .vite

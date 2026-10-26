@@ -4,6 +4,7 @@ import { sql, type Kysely, type RawBuilder } from 'kysely';
 type QueryDatabase = Kysely<Database>;
 
 type Row = Record<string, unknown>;
+type LinxSource = 'powerbi_monthly' | 'linx_movements';
 
 export interface LinxStore {
   portal: number;
@@ -22,9 +23,11 @@ export interface LinxSummary {
   stores: number;
   products: number;
   last_date: string | null;
+  source?: LinxSource;
 }
 
 export interface LinxDashboard {
+  source?: LinxSource;
   summary: LinxSummary;
   daily: Row[];
   stores: Row[];
@@ -40,9 +43,11 @@ export interface LinxPage {
   page_size: number;
   total: number;
   has_next: boolean;
+  source?: LinxSource;
 }
 
 export interface LinxAnalyses {
+  source?: LinxSource;
   suppliers: Row[];
   categories: Row[];
   origins: Row[];
@@ -52,6 +57,7 @@ export interface LinxAnalyses {
 }
 
 export interface LinxRepository {
+  getHealth(): Promise<Row>;
   listStores(): Promise<LinxStore[]>;
   getSummary(start: string, end: string, companies: string[]): Promise<LinxSummary>;
   getDashboard(start: string, end: string, companies: string[]): Promise<LinxDashboard>;
@@ -81,12 +87,15 @@ export interface LinxRepository {
   getSyncHistory(input: {
     page: number;
     pageSize: number;
+    method?: string | undefined;
     status?: string | undefined;
   }): Promise<LinxPage>;
   getSyncAudit(input: {
     page: number;
     pageSize: number;
     runId?: number | undefined;
+    tableName?: string | undefined;
+    changeType?: string | undefined;
   }): Promise<LinxPage>;
 }
 
@@ -109,7 +118,7 @@ function normalizeRow(row: Row): Row {
       if (value instanceof Date) return [key, date(value)];
       if (
         typeof value === 'string' &&
-        /^(net_|cost_|gross_|stock_|balance_|sales_|average_|sale_|quantity|turnover|coverage|active_days|first_sale|products|stores|pages|records|changed_rows|duration)/i.test(
+        /^(net_|cost_|gross_|stock_|balance_|sales_|average_|sale_|quantity|turnover|coverage|active_days|first_sale|products|stores|pages|records|changed_rows|duration|stock_age_days)/i.test(
           key,
         )
       ) {
@@ -119,6 +128,51 @@ function normalizeRow(row: Row): Row {
       return [key, value];
     }),
   );
+}
+
+type ReportSource = 'powerbi_monthly' | 'linx_movements';
+
+function sourceLabel(source: ReportSource): ReportSource {
+  return source;
+}
+
+async function reportSource(
+  database: QueryDatabase,
+  start: string,
+  end: string,
+  companies: string[],
+): Promise<ReportSource> {
+  const startDate = new Date(`${start}T00:00:00Z`);
+  const endDate = new Date(`${end}T00:00:00Z`);
+  const startDay = startDate.getUTCDate();
+  const endYear = endDate.getUTCFullYear();
+  const startYear = startDate.getUTCFullYear();
+  const endMonth = endDate.getUTCMonth();
+  const startMonth = startDate.getUTCMonth();
+  const lastDay = new Date(Date.UTC(endYear, endMonth + 1, 0)).getUTCDate();
+  if (
+    startDay !== 1 ||
+    startYear !== endYear ||
+    startMonth !== endMonth ||
+    endDate.getUTCDate() !== lastDay
+  ) {
+    return 'linx_movements';
+  }
+  const filter = companyFilter('m', companies);
+  const result = await sql<{ available: boolean }>`
+      SELECT EXISTS (
+        SELECT 1
+        FROM analytics.powerbi_monthly_sales_enriched m
+        WHERE m.document_date = ${start}::date${filter}
+      ) AS available
+    `.execute(database);
+  return result.rows[0]?.available ? 'powerbi_monthly' : 'linx_movements';
+}
+
+function sourceTable(source: ReportSource) {
+  return source === 'powerbi_monthly'
+    ? 'analytics.powerbi_monthly_sales_enriched'
+    : 'analytics.daily_sales_cache';
 }
 
 function companyFilter(alias: string, companies: string[]) {
@@ -154,7 +208,41 @@ export function createLinxRepository(database: QueryDatabase): LinxRepository {
       ) as unknown as Promise<LinxStore[]>;
     },
 
+    async getHealth() {
+      return one(
+        database,
+        sql`
+          SELECT
+            true AS ok,
+            now()::text AS database_time,
+            (SELECT row_to_json(x) FROM (
+              SELECT id, method, status, started_at, finished_at,
+                     records_received, records_inserted, error_message
+              FROM replica.collection_run ORDER BY started_at DESC LIMIT 1
+            ) x) AS last_run,
+            (SELECT row_to_json(x) FROM (
+              SELECT id, method, status, started_at, finished_at,
+                     records_received, records_inserted, error_message
+              FROM replica.collection_run
+              WHERE status = 'succeeded'
+              ORDER BY finished_at DESC NULLS LAST LIMIT 1
+            ) x) AS last_successful_run,
+            json_build_object(
+              'last_movement_date', (SELECT max(document_date) FROM analytics.sales_movement),
+              'last_stock_date', (SELECT max(snapshot_date) FROM analytics.inventory_snapshot),
+              'stock_age_days', (SELECT current_date - max(snapshot_date) FROM analytics.inventory_snapshot),
+              'movement_rows', (SELECT count(*) FROM analytics.sales_movement),
+              'product_rows', (SELECT count(*) FROM analytics.product),
+              'products_with_metadata', (SELECT count(*) FROM analytics.product WHERE name IS NOT NULL),
+              'supplier_rows', (SELECT count(*) FROM analytics.supplier)
+            ) AS data_quality
+        `,
+      );
+    },
+
     async getSummary(start, end, companies) {
+      const source = await reportSource(database, start, end, companies);
+      const table = sourceTable(source);
       const filter = companyFilter('d', companies);
       const row = await one<LinxSummary>(
         database,
@@ -167,28 +255,62 @@ export function createLinxRepository(database: QueryDatabase): LinxRepository {
           count(DISTINCT d.company_cnpj)::int AS stores,
           count(DISTINCT d.product_code)::int AS products,
           max(d.document_date) AS last_date
-        FROM analytics.daily_sales_cache d
+        FROM ${sql.raw(table)} d
         WHERE d.document_date BETWEEN ${start}::date AND ${end}::date${filter}
       `,
       );
-      return { ...row, last_date: date(row.last_date) } as LinxSummary;
+      return { ...row, last_date: date(row.last_date), source: sourceLabel(source) } as LinxSummary;
     },
 
     async getDashboard(start, end, companies) {
+      const source = await reportSource(database, start, end, companies);
+      const table = sourceTable(source);
       const filter = companyFilter('d', companies);
       const stockFilter = companyFilter('i', companies);
       const [summary, daily, stores, suppliers, categories, origins, stockByStore] =
         await Promise.all([
-          this.getSummary(start, end, companies),
+          one<LinxSummary>(
+            database,
+            sql<LinxSummary>`
+              SELECT coalesce(sum(d.net_quantity), 0)::float8 AS net_quantity,
+                     coalesce(sum(d.net_revenue), 0)::float8 AS net_revenue,
+                     coalesce(sum(d.cost_value), 0)::float8 AS cost_value,
+                     coalesce(sum(d.gross_margin), 0)::float8 AS gross_margin,
+                     count(DISTINCT d.company_cnpj)::int AS stores,
+                     count(DISTINCT d.product_code)::int AS products,
+                     max(d.document_date) AS last_date
+              FROM ${sql.raw(table)} d
+              WHERE d.document_date BETWEEN ${start}::date AND ${end}::date${filter}
+            `,
+          ).then(
+            (row) =>
+              ({
+                ...row,
+                last_date: date(row.last_date),
+                source: sourceLabel(source),
+              }) as LinxSummary,
+          ),
           rows(
             database,
             sql`
-          SELECT document_date, sum(net_quantity)::float8 AS net_quantity,
-                 sum(net_revenue)::float8 AS net_revenue, sum(cost_value)::float8 AS cost_value,
-                 sum(gross_margin)::float8 AS gross_margin
-          FROM analytics.daily_sales_cache d
-          WHERE document_date BETWEEN ${start}::date AND ${end}::date${filter}
-          GROUP BY document_date ORDER BY document_date
+          WITH calendar AS (
+            SELECT generate_series(${start}::date, ${end}::date, interval '1 day')::date AS document_date
+          ), daily AS (
+            SELECT document_date, sum(net_quantity)::float8 AS net_quantity,
+                   sum(net_revenue)::float8 AS net_revenue, sum(cost_value)::float8 AS cost_value,
+                   sum(gross_margin)::float8 AS gross_margin
+            FROM ${sql.raw(table)} d
+            WHERE document_date BETWEEN ${start}::date AND ${end}::date${filter}
+            GROUP BY document_date
+          )
+          SELECT c.document_date,
+                 coalesce(d.net_quantity, 0)::float8 AS net_quantity,
+                 coalesce(d.net_revenue, 0)::float8 AS net_revenue,
+                 coalesce(d.cost_value, 0)::float8 AS cost_value,
+                 coalesce(d.gross_margin, 0)::float8 AS gross_margin
+          FROM calendar c
+          LEFT JOIN daily d ON d.document_date = c.document_date
+          ORDER BY c.document_date
         `,
           ),
           rows(
@@ -197,7 +319,7 @@ export function createLinxRepository(database: QueryDatabase): LinxRepository {
           SELECT company_cnpj, max(store_name) AS store_name,
                  sum(net_quantity)::float8 AS net_quantity, sum(net_revenue)::float8 AS net_revenue,
                  sum(cost_value)::float8 AS cost_value, sum(gross_margin)::float8 AS gross_margin
-          FROM analytics.daily_sales_cache d
+          FROM ${sql.raw(table)} d
           WHERE document_date BETWEEN ${start}::date AND ${end}::date${filter}
           GROUP BY company_cnpj ORDER BY net_revenue DESC
         `,
@@ -209,7 +331,7 @@ export function createLinxRepository(database: QueryDatabase): LinxRepository {
             SELECT supplier_code, coalesce(supplier_name, 'Sem fornecedor') AS supplier_name,
                    sum(net_quantity)::float8 AS net_quantity, sum(net_revenue)::float8 AS net_revenue,
                    sum(cost_value)::float8 AS cost_value, sum(gross_margin)::float8 AS gross_margin
-            FROM analytics.daily_sales_cache d
+            FROM ${sql.raw(table)} d
             WHERE document_date BETWEEN ${start}::date AND ${end}::date${filter}
             GROUP BY supplier_code, supplier_name
           ), stock AS (
@@ -249,7 +371,7 @@ export function createLinxRepository(database: QueryDatabase): LinxRepository {
                    max(class_name) AS class_name, max(subclass_name) AS subclass_name,
                    sum(net_quantity)::float8 AS net_quantity, sum(net_revenue)::float8 AS net_revenue,
                    sum(cost_value)::float8 AS cost_value, sum(gross_margin)::float8 AS gross_margin
-            FROM analytics.daily_sales_cache d
+            FROM ${sql.raw(table)} d
             WHERE document_date BETWEEN ${start}::date AND ${end}::date${filter}
             GROUP BY category_name
           ), stock AS (
@@ -295,7 +417,7 @@ export function createLinxRepository(database: QueryDatabase): LinxRepository {
                    END AS origin_name,
                    sum(net_quantity)::float8 AS net_quantity, sum(net_revenue)::float8 AS net_revenue,
                    sum(cost_value)::float8 AS cost_value, sum(gross_margin)::float8 AS gross_margin
-            FROM analytics.daily_sales_cache d
+            FROM ${sql.raw(table)} d
             LEFT JOIN analytics.product p ON p.portal = d.portal AND p.product_code = d.product_code
             WHERE document_date BETWEEN ${start}::date AND ${end}::date${filter}
             GROUP BY 1
@@ -360,6 +482,7 @@ export function createLinxRepository(database: QueryDatabase): LinxRepository {
         categories,
         origins,
         stock_by_store: stockByStore,
+        source: sourceLabel(source),
       };
     },
 
@@ -468,6 +591,8 @@ export function createLinxRepository(database: QueryDatabase): LinxRepository {
     },
 
     async getDailySales({ start, end, companies, page, pageSize, productCode }) {
+      const source = await reportSource(database, start, end, companies);
+      const table = sourceTable(source);
       const offset = (page - 1) * pageSize;
       const filter = companyFilter('d', companies);
       const productFilter = productCode ? sql` AND d.product_code = ${productCode}` : sql``;
@@ -475,7 +600,7 @@ export function createLinxRepository(database: QueryDatabase): LinxRepository {
         rows(
           database,
           sql`
-          SELECT * FROM analytics.daily_sales_cache d
+          SELECT * FROM ${sql.raw(table)} d
           WHERE d.document_date BETWEEN ${start}::date AND ${end}::date${filter}${productFilter}
           ORDER BY d.document_date DESC, d.net_revenue DESC
           LIMIT ${pageSize} OFFSET ${offset}
@@ -484,7 +609,7 @@ export function createLinxRepository(database: QueryDatabase): LinxRepository {
         one<{ total: number }>(
           database,
           sql`
-          SELECT count(*)::int AS total FROM analytics.daily_sales_cache d
+          SELECT count(*)::int AS total FROM ${sql.raw(table)} d
           WHERE d.document_date BETWEEN ${start}::date AND ${end}::date${filter}${productFilter}
         `,
         ),
@@ -495,10 +620,13 @@ export function createLinxRepository(database: QueryDatabase): LinxRepository {
         page_size: pageSize,
         total: num(count.total),
         has_next: page * pageSize < num(count.total),
+        source,
       };
     },
 
     async getAnalyses(start, end, companies) {
+      const source = await reportSource(database, start, end, companies);
+      const table = sourceTable(source);
       const filter = companyFilter('d', companies);
       const stockFilter = companyFilter('i', companies);
       const [suppliers, categories, origins, velocity, turnover, storeDaily] = await Promise.all([
@@ -509,7 +637,7 @@ export function createLinxRepository(database: QueryDatabase): LinxRepository {
             SELECT supplier_code, coalesce(supplier_name, 'Sem fornecedor') AS supplier_name,
                    sum(net_quantity)::float8 AS net_quantity, sum(net_revenue)::float8 AS net_revenue,
                    sum(cost_value)::float8 AS cost_value, sum(gross_margin)::float8 AS gross_margin
-            FROM analytics.daily_sales_cache d
+            FROM ${sql.raw(table)} d
             WHERE document_date BETWEEN ${start}::date AND ${end}::date${filter}
             GROUP BY supplier_code, supplier_name
           ), stock AS (
@@ -549,7 +677,7 @@ export function createLinxRepository(database: QueryDatabase): LinxRepository {
                    max(class_name) AS class_name, max(subclass_name) AS subclass_name,
                    sum(net_quantity)::float8 AS net_quantity, sum(net_revenue)::float8 AS net_revenue,
                    sum(cost_value)::float8 AS cost_value, sum(gross_margin)::float8 AS gross_margin
-            FROM analytics.daily_sales_cache d
+            FROM ${sql.raw(table)} d
             WHERE document_date BETWEEN ${start}::date AND ${end}::date${filter}
             GROUP BY category_name
           ), stock AS (
@@ -595,7 +723,7 @@ export function createLinxRepository(database: QueryDatabase): LinxRepository {
                    END AS origin_name,
                    sum(net_quantity)::float8 AS net_quantity, sum(net_revenue)::float8 AS net_revenue,
                    sum(cost_value)::float8 AS cost_value, sum(gross_margin)::float8 AS gross_margin
-            FROM analytics.daily_sales_cache d
+            FROM ${sql.raw(table)} d
             LEFT JOIN analytics.product p ON p.portal = d.portal AND p.product_code = d.product_code
             WHERE document_date BETWEEN ${start}::date AND ${end}::date${filter}
             GROUP BY 1
@@ -640,7 +768,7 @@ export function createLinxRepository(database: QueryDatabase): LinxRepository {
                    sum(net_quantity)::float8 AS net_quantity, sum(net_revenue)::float8 AS net_revenue,
                    min(document_date) AS first_sale_date,
                    (${end}::date - min(document_date) + 1)::int AS active_days
-            FROM analytics.daily_sales_cache d WHERE document_date BETWEEN ${start}::date AND ${end}::date${filter}
+            FROM ${sql.raw(table)} d WHERE document_date BETWEEN ${start}::date AND ${end}::date${filter}
             GROUP BY product_code
           ), stock AS (
             SELECT product_code, sum(quantity)::float8 AS stock_quantity, sum(quantity * coalesce(sale_price, 0))::float8 AS stock_sale_value,
@@ -656,12 +784,39 @@ export function createLinxRepository(database: QueryDatabase): LinxRepository {
         rows(
           database,
           sql`
-          SELECT d.product_code, max(d.product_name) AS product_name, max(d.store_name) AS store_name, d.company_cnpj,
-                 sum(d.net_quantity)::float8 AS net_quantity, sum(d.net_revenue)::float8 AS net_revenue,
-                 sum(d.cost_value)::float8 AS cost_value,
-                 CASE WHEN sum(d.net_quantity) <> 0 THEN sum(d.net_revenue) / NULLIF(sum(d.net_quantity), 0) ELSE 0 END AS average_sale_price
-          FROM analytics.daily_sales_cache d WHERE document_date BETWEEN ${start}::date AND ${end}::date${filter}
-          GROUP BY d.company_cnpj, d.product_code ORDER BY net_revenue DESC LIMIT 500
+          WITH sales AS (
+            SELECT d.product_code,
+                   max(d.product_name) AS product_name,
+                   max(d.supplier_name) AS supplier_name,
+                   max(d.category_name) AS category_name,
+                   sum(d.net_quantity)::float8 AS net_quantity,
+                   sum(d.net_revenue)::float8 AS net_revenue,
+                   min(d.document_date) AS first_sale_date,
+                   (${end}::date - min(d.document_date) + 1)::int AS active_days
+            FROM ${sql.raw(table)} d
+            WHERE d.document_date BETWEEN ${start}::date AND ${end}::date${filter}
+            GROUP BY d.product_code
+          ), stock AS (
+            SELECT i.product_code,
+                   sum(i.quantity)::float8 AS stock_quantity,
+                   sum(i.quantity * coalesce(i.sale_price, 0))::float8 AS stock_sale_value,
+                   avg(i.quantity)::float8 AS average_stock_quantity,
+                   count(*)::int AS stock_history_points
+            FROM analytics.inventory_snapshot i
+            WHERE i.snapshot_date BETWEEN ${start}::date AND ${end}::date${companyFilter('i', companies)}
+            GROUP BY i.product_code
+          )
+          SELECT sales.*, stock.stock_quantity, stock.stock_sale_value,
+                 stock.average_stock_quantity, stock.stock_history_points,
+                 CASE WHEN sales.active_days > 0
+                      THEN sales.net_quantity / sales.active_days ELSE 0 END AS sales_velocity,
+                 CASE WHEN stock.average_stock_quantity > 0
+                      THEN sales.net_quantity / stock.average_stock_quantity ELSE NULL END AS turnover
+          FROM sales
+          LEFT JOIN stock USING (product_code)
+          WHERE stock.stock_history_points > 0
+          ORDER BY turnover DESC NULLS LAST, net_revenue DESC
+          LIMIT 500
         `,
         ),
         rows(
@@ -671,7 +826,7 @@ export function createLinxRepository(database: QueryDatabase): LinxRepository {
             SELECT d.document_date, d.company_cnpj, max(d.store_name) AS store_name,
                    sum(d.net_quantity)::float8 AS net_quantity, sum(d.net_revenue)::float8 AS net_revenue,
                    sum(d.cost_value)::float8 AS cost_value
-            FROM analytics.daily_sales_cache d
+            FROM ${sql.raw(table)} d
             WHERE d.document_date BETWEEN ${start}::date AND ${end}::date${filter}
             GROUP BY d.document_date, d.company_cnpj
           ), stock AS (
@@ -680,7 +835,7 @@ export function createLinxRepository(database: QueryDatabase): LinxRepository {
                    coalesce(sum(latest.quantity * coalesce(latest.sale_price, 0)), 0)::float8 AS stock_sale_value,
                    coalesce(sum(latest.total_cost), 0)::float8 AS stock_cost_value
             FROM (SELECT DISTINCT d.document_date, d.company_cnpj
-                  FROM analytics.daily_sales_cache d
+                  FROM ${sql.raw(table)} d
                   WHERE d.document_date BETWEEN ${start}::date AND ${end}::date${filter}) days
             LEFT JOIN LATERAL (
               SELECT DISTINCT ON (i.product_code)
@@ -710,7 +865,15 @@ export function createLinxRepository(database: QueryDatabase): LinxRepository {
         `,
         ),
       ]);
-      return { suppliers, categories, origins, velocity, turnover, store_daily: storeDaily };
+      return {
+        source: sourceLabel(source),
+        suppliers,
+        categories,
+        origins,
+        velocity,
+        turnover,
+        store_daily: storeDaily,
+      };
     },
 
     async getSyncStatus() {
@@ -726,17 +889,18 @@ export function createLinxRepository(database: QueryDatabase): LinxRepository {
       );
     },
 
-    async getSyncHistory({ page, pageSize, status }) {
+    async getSyncHistory({ page, pageSize, method, status }) {
       const offset = (page - 1) * pageSize;
+      const methodFilter = method ? sql` AND method = ${method}` : sql``;
       const statusFilter = status ? sql` AND status = ${status}` : sql``;
       const [data, count] = await Promise.all([
         rows(
           database,
-          sql`SELECT id, method, company_cnpj, window_start, window_end, status, pages, records_received, records_inserted, started_at, finished_at, error_message FROM replica.collection_run WHERE true${statusFilter} ORDER BY started_at DESC LIMIT ${pageSize} OFFSET ${offset}`,
+          sql`SELECT id, method, company_cnpj, window_start, window_end, status, pages, records_received, records_inserted, started_at, finished_at, error_message FROM replica.collection_run WHERE true${methodFilter}${statusFilter} ORDER BY started_at DESC LIMIT ${pageSize} OFFSET ${offset}`,
         ),
         one<{ total: number }>(
           database,
-          sql`SELECT count(*)::int AS total FROM replica.collection_run WHERE true${statusFilter}`,
+          sql`SELECT count(*)::int AS total FROM replica.collection_run WHERE true${methodFilter}${statusFilter}`,
         ),
       ]);
       return {
@@ -748,17 +912,19 @@ export function createLinxRepository(database: QueryDatabase): LinxRepository {
       };
     },
 
-    async getSyncAudit({ page, pageSize, runId }) {
+    async getSyncAudit({ page, pageSize, runId, tableName, changeType }) {
       const offset = (page - 1) * pageSize;
       const runFilter = runId ? sql` AND collection_run_id = ${runId}` : sql``;
+      const tableFilter = tableName ? sql` AND table_name = ${tableName}` : sql``;
+      const changeFilter = changeType ? sql` AND change_type = ${changeType}` : sql``;
       const [data, count] = await Promise.all([
         rows(
           database,
-          sql`SELECT id, collection_run_id, table_name, record_key, change_type, previous_hash, current_hash, changed_at FROM replica.collection_change WHERE true${runFilter} ORDER BY changed_at DESC LIMIT ${pageSize} OFFSET ${offset}`,
+          sql`SELECT id, collection_run_id, table_name, record_key, change_type, previous_hash, current_hash, changed_at FROM replica.collection_change WHERE true${runFilter}${tableFilter}${changeFilter} ORDER BY changed_at DESC LIMIT ${pageSize} OFFSET ${offset}`,
         ),
         one<{ total: number }>(
           database,
-          sql`SELECT count(*)::int AS total FROM replica.collection_change WHERE true${runFilter}`,
+          sql`SELECT count(*)::int AS total FROM replica.collection_change WHERE true${runFilter}${tableFilter}${changeFilter}`,
         ),
       ]);
       return {
