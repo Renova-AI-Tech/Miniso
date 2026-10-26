@@ -237,7 +237,7 @@ export function createLinxRepository(database: QueryDatabase): LinxRepository {
                  coalesce(k.stock_sale_value, 0)::float8 AS stock_sale_value,
                  coalesce(k.stock_cost_value, 0)::float8 AS stock_cost_value
           FROM sales s
-          FULL OUTER JOIN stock k ON k.supplier_code IS NOT DISTINCT FROM s.supplier_code
+          FULL OUTER JOIN stock k ON coalesce(k.supplier_code, -1) = coalesce(s.supplier_code, -1)
           ORDER BY net_revenue DESC, stock_sale_value DESC
         `,
           ),
@@ -279,7 +279,7 @@ export function createLinxRepository(database: QueryDatabase): LinxRepository {
                  coalesce(k.stock_sale_value, 0)::float8 AS stock_sale_value,
                  coalesce(k.stock_cost_value, 0)::float8 AS stock_cost_value
           FROM sales s
-          FULL OUTER JOIN stock k ON k.category_name IS NOT DISTINCT FROM s.category_name
+          FULL OUTER JOIN stock k ON k.category_name = s.category_name
           ORDER BY net_revenue DESC, stock_sale_value DESC
         `,
           ),
@@ -537,7 +537,7 @@ export function createLinxRepository(database: QueryDatabase): LinxRepository {
                  coalesce(k.stock_sale_value, 0)::float8 AS stock_sale_value,
                  coalesce(k.stock_cost_value, 0)::float8 AS stock_cost_value
           FROM sales s
-          FULL OUTER JOIN stock k ON k.supplier_code IS NOT DISTINCT FROM s.supplier_code
+          FULL OUTER JOIN stock k ON coalesce(k.supplier_code, -1) = coalesce(s.supplier_code, -1)
           ORDER BY net_revenue DESC, stock_sale_value DESC
         `,
         ),
@@ -579,7 +579,7 @@ export function createLinxRepository(database: QueryDatabase): LinxRepository {
                  coalesce(k.stock_sale_value, 0)::float8 AS stock_sale_value,
                  coalesce(k.stock_cost_value, 0)::float8 AS stock_cost_value
           FROM sales s
-          FULL OUTER JOIN stock k ON k.category_name IS NOT DISTINCT FROM s.category_name
+          FULL OUTER JOIN stock k ON k.category_name = s.category_name
           ORDER BY net_revenue DESC, stock_sale_value DESC
         `,
         ),
