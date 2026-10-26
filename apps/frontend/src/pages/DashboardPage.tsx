@@ -36,6 +36,11 @@ const subtractDays = (iso: string, amount: number) => {
   date.setDate(date.getDate() - amount);
   return date.toISOString().slice(0, 10);
 };
+const inclusiveDays = (start: string, end: string) => {
+  const startDate = new Date(`${start}T00:00:00`).getTime();
+  const endDate = new Date(`${end}T00:00:00`).getTime();
+  return Math.max(1, Math.floor((endDate - startDate) / 86_400_000) + 1);
+};
 const money = new Intl.NumberFormat('pt-BR', {
   style: 'currency',
   currency: 'BRL',
@@ -1070,6 +1075,10 @@ function App() {
     (total, row) => total + Number(row.balance_quantity || 0),
     0,
   );
+  const periodDays = inclusiveDays(start, end);
+  const dailyVelocityKpi = Number(dashboard?.summary.net_quantity || 0) / periodDays;
+  const turnoverKpi =
+    stockQuantity > 0 ? Number(dashboard?.summary.net_quantity || 0) / stockQuantity : 0;
 
   const chartMetricLabel: Record<ChartMetric, string> = {
     net_revenue: 'Faturamento',
@@ -1721,6 +1730,20 @@ function App() {
               </div>
               <strong>{money.format(stockSaleTotal)}</strong>
               <small>{number.format(stockQuantity)} unidades · saldo × preço de tabela</small>
+            </Card>
+            <Card className="kpi-card">
+              <div className="kpi-label">
+                Giro de estoque <span className="kpi-icon orange">↻</span>
+              </div>
+              <strong>{turnoverKpi.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}x</strong>
+              <small>vendas líquidas ÷ saldo atual</small>
+            </Card>
+            <Card className="kpi-card">
+              <div className="kpi-label">
+                Velocidade de venda <span className="kpi-icon blue">⚡</span>
+              </div>
+              <strong>{number.format(dailyVelocityKpi)}</strong>
+              <small>unidades por dia · {periodDays} dias selecionados</small>
             </Card>
           </section>
         )}
