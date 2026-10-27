@@ -69,11 +69,13 @@ export type Product = {
 export type InventoryItem = {
   portal: number;
   company_cnpj: string;
+  store_name?: string | null;
   product_code: number;
   snapshot_date: string;
   quantity: number | null;
   average_cost: number | null;
   total_cost: number | null;
+  stock_sale_value?: number | null;
   cost_price: number | null;
   sale_price: number | null;
   location: string | null;

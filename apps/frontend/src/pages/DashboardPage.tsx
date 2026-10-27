@@ -9,6 +9,7 @@ import {
   getDashboard,
   getHealth,
   getInventory,
+  getInventoryHistory,
   getProducts,
   getStores,
   getSyncAudit,
@@ -64,6 +65,21 @@ type ViewKey = 'overview' | 'sales' | 'inventory' | 'products' | 'status';
 type ChartMetric = 'net_revenue' | 'net_quantity' | 'cost_value';
 
 type WorkbookSheets = Record<string, Array<Record<string, unknown>>>;
+type ExportOptions = {
+  sales: boolean;
+  currentInventory: boolean;
+  dailyInventory: boolean;
+  products: boolean;
+  analyses: boolean;
+};
+
+const defaultExportOptions: ExportOptions = {
+  sales: true,
+  currentInventory: true,
+  dailyInventory: false,
+  products: true,
+  analyses: true,
+};
 
 async function saveWorkbook(sheets: WorkbookSheets, filename: string) {
   // Vite exposes this CommonJS package through `default`, while some
@@ -874,6 +890,8 @@ function App() {
   const [sync, setSync] = useState<SyncStatus>({ running: false });
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportOptions, setExportOptions] = useState<ExportOptions>(defaultExportOptions);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [ready, setReady] = useState(false);
@@ -1144,25 +1162,59 @@ function App() {
     setExporting(true);
     setError('');
     try {
-      setMessage('Coletando vendas, estoque e cadastro completos para o Excel...');
-      const [salesResponse, inventoryResponse] = await Promise.all([
-        getDailySales(start, end, companies, 1, 100000),
-        getInventory(end, companies, 100000),
-      ]);
-      const exportSales = salesResponse.data;
-      const exportInventory = inventoryResponse.data;
+      setMessage('Coletando os conjuntos selecionados para o Excel...');
+      const exportSales: DailySale[] = [];
+      if (exportOptions.sales) {
+        for (let page = 1; page <= 200; page += 1) {
+          const response = await getDailySales(start, end, companies, page, 10000);
+          exportSales.push(...response.data);
+          if (!response.has_next) break;
+          if (page === 200)
+            throw new Error(
+              'O volume de vendas excede o limite. Reduza o período ou selecione lojas.',
+            );
+        }
+      }
+      const exportInventory: InventoryItem[] = [];
+      if (exportOptions.currentInventory) {
+        for (let page = 1; page <= 200; page += 1) {
+          const response = await getInventory(end, companies, 10000, page);
+          exportInventory.push(...response.data);
+          if (!response.has_next) break;
+          if (page === 200)
+            throw new Error(
+              'O volume de estoque excede o limite. Reduza o período ou selecione lojas.',
+            );
+        }
+      }
+      const exportInventoryHistory: InventoryItem[] = [];
+      if (exportOptions.dailyInventory) {
+        for (let page = 1; page <= 200; page += 1) {
+          const response = await getInventoryHistory(start, end, companies, page, 5000);
+          exportInventoryHistory.push(...response.data);
+          if (!response.has_next) break;
+          if (page === 200)
+            throw new Error(
+              'O histórico de estoque excede o limite. Reduza o período ou selecione lojas.',
+            );
+        }
+      }
       const productPageSize = 5000;
       const exportProducts: Product[] = [];
-      for (let page = 1; page <= 20; page += 1) {
-        const response = await getProducts(
-          activeView === 'products' ? productSearch : '',
-          companies,
-          end,
-          page,
-          productPageSize,
-        );
-        exportProducts.push(...response.data);
-        if (response.data.length < productPageSize) break;
+      if (exportOptions.products) {
+        for (let page = 1; page <= 200; page += 1) {
+          const response = await getProducts(
+            activeView === 'products' ? productSearch : '',
+            companies,
+            end,
+            page,
+            productPageSize,
+          );
+          exportProducts.push(...response.data);
+          if (!response.has_next) break;
+          if (page === 200)
+            throw new Error('O cadastro excede o limite. Reduza o período ou selecione lojas.');
+        }
       }
       const salesByDate = new Map<
         string,
@@ -1270,6 +1322,10 @@ function App() {
         (sum, row) => sum + Number(row.total_cost || 0),
         0,
       );
+      const exportAnalytics =
+        exportOptions.analyses && !analytics
+          ? await getAnalytics(start, end, companies)
+          : analytics;
       const dailyRows = [...salesByDate.entries()].sort(([a], [b]) => a.localeCompare(b));
       const sheets: WorkbookSheets = {
         Resumo: [
@@ -1356,8 +1412,8 @@ function App() {
             Margem: row.gross_margin,
           })),
       };
-      if (analytics) {
-        sheets.Velocidade = analytics.velocity.map((row) => ({
+      if (exportAnalytics) {
+        sheets.Velocidade = exportAnalytics.velocity.map((row) => ({
           Produto: row.product_name || `Produto #${row.product_code}`,
           Código: row.product_code,
           Fornecedor: row.supplier_name || '',
@@ -1366,7 +1422,7 @@ function App() {
           'Unidades por dia': Number(row.sales_velocity || 0),
           'Estoque tabela': Number(row.stock_sale_value || 0),
         }));
-        sheets.Giro = analytics.turnover.map((row) => ({
+        sheets.Giro = exportAnalytics.turnover.map((row) => ({
           Produto: row.product_name || `Produto #${row.product_code}`,
           Código: row.product_code,
           Vendas: Number(row.net_quantity || 0),
@@ -1374,7 +1430,7 @@ function App() {
           Giro: Number(row.turnover || 0),
           Snapshots: Number(row.stock_history_points || 0),
         }));
-        sheets['Giro por loja'] = analytics.store_daily.map((row) => ({
+        sheets['Giro por loja'] = exportAnalytics.store_daily.map((row) => ({
           Data: row.document_date,
           Loja: row.store_name || row.company_cnpj,
           CNPJ: row.company_cnpj,
@@ -1399,6 +1455,27 @@ function App() {
           'Preço de custo': Number(row.cost_price || row.average_cost || 0),
           'Preço de tabela': Number(row.sale_price || 0),
           'Valor a custo': Number(row.total_cost || 0),
+          Fornecedor: row.supplier_name || '',
+          Categoria: row.category_name || '',
+          Classe: row.class_name || '',
+          Subclasse: row.subclass_name || '',
+          Origem: row.origin_name || '',
+        }));
+      }
+      if (exportInventoryHistory.length) {
+        sheets['Estoque diário'] = exportInventoryHistory.map((row) => ({
+          Data: row.snapshot_date,
+          Loja: row.store_name || storeName(row.company_cnpj),
+          CNPJ: row.company_cnpj,
+          Produto: row.product_name || '',
+          Código: row.product_code,
+          Referência: row.reference || '',
+          Localização: row.location || '',
+          Saldo: Number(row.quantity || 0),
+          'Preço de custo': Number(row.cost_price || row.average_cost || 0),
+          'Preço de tabela': Number(row.sale_price || 0),
+          'Valor a custo': Number(row.total_cost || 0),
+          'Valor a preço de tabela': Number(row.stock_sale_value || 0),
           Fornecedor: row.supplier_name || '',
           Categoria: row.category_name || '',
           Classe: row.class_name || '',
@@ -1474,15 +1551,39 @@ function App() {
           Observação: 'Cadastro por produto e loja',
         },
         {
+          Campo: 'Linhas de estoque diário',
+          Valor: exportInventoryHistory.length,
+          Observação:
+            'Snapshots realmente coletados pela Linx no período; dias ausentes não são preenchidos',
+        },
+        {
+          Campo: 'Conjuntos selecionados',
+          Valor: Object.entries(exportOptions)
+            .filter(([, selected]) => selected)
+            .map(([key]) => key)
+            .join(', '),
+          Observação: 'Escolha feita antes da geração do arquivo',
+        },
+        {
           Campo: 'Limite técnico',
           Valor: '100.000 linhas por coleta',
           Observação: 'Se o volume exceder esse limite, exporte por loja ou por período',
         },
       ];
+      if (!exportOptions.sales) {
+        for (const sheet of ['Evolução diária', 'Por loja', 'Fornecedores', 'Categorias', 'Vendas'])
+          delete sheets[sheet];
+      }
+      if (!exportOptions.currentInventory) delete sheets.Estoque;
+      if (!exportOptions.dailyInventory) delete sheets['Estoque diário'];
+      if (!exportOptions.products) delete sheets.Produtos;
+      if (!exportOptions.analyses) {
+        for (const sheet of ['Velocidade', 'Giro', 'Giro por loja']) delete sheets[sheet];
+      }
       const suffix = new Date().toISOString().slice(0, 10);
       await saveWorkbook(sheets, `linx-analytics-${activeView}-${suffix}.xlsx`);
       setMessage(
-        `Excel gerado com ${exportSales.length.toLocaleString('pt-BR')} vendas, ${exportInventory.length.toLocaleString('pt-BR')} linhas de estoque e ${exportProducts.length.toLocaleString('pt-BR')} produtos.`,
+        `Excel gerado com ${exportSales.length.toLocaleString('pt-BR')} vendas, ${exportInventory.length.toLocaleString('pt-BR')} linhas de estoque atual, ${exportInventoryHistory.length.toLocaleString('pt-BR')} snapshots diários e ${exportProducts.length.toLocaleString('pt-BR')} produtos.`,
       );
     } catch (requestError) {
       setError(
@@ -1490,6 +1591,7 @@ function App() {
       );
     } finally {
       setExporting(false);
+      setExportOpen(false);
     }
   }
 
@@ -1595,7 +1697,7 @@ function App() {
             <Button
               variant="outline"
               className="export-button"
-              onClick={handleExport}
+              onClick={() => setExportOpen(true)}
               disabled={exporting || loading}
             >
               <span>⇩</span>
@@ -1612,6 +1714,94 @@ function App() {
             </Button>
           </div>
         </header>
+
+        {exportOpen && (
+          <div className="export-dialog-backdrop" role="presentation">
+            <Card
+              className="export-dialog"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="export-title"
+            >
+              <div className="export-dialog-header">
+                <div>
+                  <p className="eyebrow">EXPORTAÇÃO ANALÍTICA</p>
+                  <h2 id="export-title">Escolha o que deseja comparar</h2>
+                  <small>
+                    Período: {start} a {end} ·{' '}
+                    {companies.length ? `${companies.length} loja(s)` : 'todas as lojas'}
+                  </small>
+                </div>
+                <Button
+                  variant="ghost"
+                  type="button"
+                  onClick={() => setExportOpen(false)}
+                  aria-label="Fechar"
+                >
+                  ×
+                </Button>
+              </div>
+              <div className="export-options-grid">
+                {(
+                  [
+                    ['sales', 'Vendas detalhadas', 'Movimentos por dia, loja e produto.'],
+                    [
+                      'currentInventory',
+                      'Estoque atual',
+                      'Último snapshot disponível até a data final.',
+                    ],
+                    [
+                      'dailyInventory',
+                      'Estoque diário',
+                      'Todos os snapshots realmente coletados no período.',
+                    ],
+                    [
+                      'products',
+                      'Produtos e cadastro',
+                      'Preços, saldo, fornecedor e classificação.',
+                    ],
+                    [
+                      'analyses',
+                      'Velocidade e giro',
+                      'Indicadores de velocidade, cobertura e giro.',
+                    ],
+                  ] as const
+                ).map(([key, label, description]) => (
+                  <label className="export-option" htmlFor={`export-${key}`} key={key}>
+                    <Checkbox
+                      id={`export-${key}`}
+                      checked={exportOptions[key]}
+                      onCheckedChange={(checked) =>
+                        setExportOptions((previous) => ({ ...previous, [key]: checked === true }))
+                      }
+                    />
+                    <span>
+                      <strong>{label}</strong>
+                      <small>{description}</small>
+                    </span>
+                  </label>
+                ))}
+              </div>
+              <div className="export-dialog-note">
+                Dias sem snapshot não serão preenchidos artificialmente. Eles permanecerão ausentes
+                no histórico para facilitar a auditoria da coleta.
+              </div>
+              <div className="export-dialog-actions">
+                <Button variant="outline" type="button" onClick={() => setExportOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button
+                  variant="accent"
+                  type="button"
+                  disabled={exporting || !Object.values(exportOptions).some(Boolean)}
+                  onClick={() => void handleExport()}
+                >
+                  {exporting ? 'Gerando...' : 'Gerar Excel'}
+                </Button>
+              </div>
+            </Card>
+          </div>
+        )}
 
         <Card className="filters">
           <div className="filter-heading">

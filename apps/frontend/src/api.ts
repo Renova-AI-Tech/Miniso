@@ -112,6 +112,30 @@ export async function getInventory(
   }>;
 }
 
+export async function getInventoryHistory(
+  start: string,
+  end: string,
+  company?: CompanyFilter,
+  page = 1,
+  pageSize = 5000,
+) {
+  return client.linx.inventoryHistory.query({
+    start,
+    end,
+    companies: companies(company),
+    page,
+    pageSize,
+  }) as unknown as Promise<{
+    start: string;
+    end: string;
+    data: InventoryItem[];
+    page: number;
+    page_size: number;
+    total: number;
+    has_next: boolean;
+  }>;
+}
+
 export async function getAnalytics(start: string, end: string, company?: CompanyFilter) {
   return client.linx.analyses.query({
     start,

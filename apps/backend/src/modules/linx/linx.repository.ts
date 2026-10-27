@@ -46,6 +46,12 @@ export interface LinxPage {
   source?: LinxSource;
 }
 
+export interface LinxInventoryHistoryPage extends LinxPage {
+  data: Row[];
+  start: string;
+  end: string;
+}
+
 export interface LinxAnalyses {
   source?: LinxSource;
   suppliers: Row[];
@@ -74,6 +80,13 @@ export interface LinxRepository {
     page: number;
     pageSize: number;
   }): Promise<LinxPage>;
+  getInventoryHistory(input: {
+    start: string;
+    end: string;
+    companies: string[];
+    page: number;
+    pageSize: number;
+  }): Promise<LinxInventoryHistoryPage>;
   getDailySales(input: {
     start: string;
     end: string;
@@ -582,6 +595,51 @@ export function createLinxRepository(database: QueryDatabase): LinxRepository {
         ),
       ]);
       return {
+        data,
+        page,
+        page_size: pageSize,
+        total: num(count.total),
+        has_next: page * pageSize < num(count.total),
+      };
+    },
+
+    async getInventoryHistory({ start, end, companies, page, pageSize }) {
+      const offset = (page - 1) * pageSize;
+      const filter = companyFilter('i', companies);
+      const [data, count] = await Promise.all([
+        rows(
+          database,
+          sql`
+          SELECT i.portal, i.company_cnpj, s.trade_name AS store_name,
+                 i.snapshot_date, i.product_code, p.name AS product_name,
+                 p.reference, i.quantity, i.average_cost, i.total_cost,
+                 i.cost_price, i.sale_price,
+                 (i.quantity * coalesce(i.sale_price, 0))::float8 AS stock_sale_value,
+                 i.location, p.supplier_code, p.supplier_name,
+                 p.classification_name, p.category_name, p.class_name,
+                 p.subclass_name, p.origin_name
+          FROM analytics.inventory_snapshot i
+          JOIN analytics.product p
+            ON p.portal = i.portal AND p.product_code = i.product_code
+          LEFT JOIN analytics.store s
+            ON s.portal = i.portal AND s.company_cnpj = i.company_cnpj
+          WHERE i.snapshot_date BETWEEN ${start}::date AND ${end}::date${filter}
+          ORDER BY i.snapshot_date, i.company_cnpj, p.name NULLS LAST, i.product_code
+          LIMIT ${pageSize} OFFSET ${offset}
+        `,
+        ),
+        one<{ total: number }>(
+          database,
+          sql`
+          SELECT count(*)::int AS total
+          FROM analytics.inventory_snapshot i
+          WHERE i.snapshot_date BETWEEN ${start}::date AND ${end}::date${filter}
+        `,
+        ),
+      ]);
+      return {
+        start,
+        end,
         data,
         page,
         page_size: pageSize,

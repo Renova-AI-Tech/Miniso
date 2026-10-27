@@ -93,6 +93,22 @@ export const linxRouter = router({
       if (!ctx.linx) throw new TRPCError({ code: 'SERVICE_UNAVAILABLE' });
       return await ctx.linx.getInventory(input);
     }),
+  inventoryHistory: publicProcedure
+    .input(
+      z
+        .object({
+          start: day,
+          end: day,
+          companies,
+          page: z.number().int().min(1).default(1),
+          pageSize: z.number().int().min(1).max(10000).default(5000),
+        })
+        .strict(),
+    )
+    .query(async ({ ctx, input }) => {
+      if (!ctx.linx) throw new TRPCError({ code: 'SERVICE_UNAVAILABLE' });
+      return await ctx.linx.getInventoryHistory(input);
+    }),
   analyses: publicProcedure.input(period).query(async ({ ctx, input }) => {
     if (!ctx.linx) throw new TRPCError({ code: 'SERVICE_UNAVAILABLE' });
     return {
